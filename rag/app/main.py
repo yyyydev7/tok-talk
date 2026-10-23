@@ -12,7 +12,7 @@ def create_app() -> FastAPI:
     application = FastAPI(
         title="톡talk API",
         version="0.3.0",
-        description="NIOSH PDF 기반 물질 검색과 근거 답변 API",
+        description="KOSHA MSDS·NIOSH PDF 기반 물질 검색과 근거 답변 API",
     )
     origins = [item.strip() for item in os.getenv("CORS_ORIGINS", "http://localhost:5174").split(",")
                if item.strip() and item.strip() != "*"]

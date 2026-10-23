@@ -1,13 +1,11 @@
 """프로세스 생존과 업무 준비 상태를 구분한다."""
 
-import os
-from pathlib import Path
 from typing import Literal
 
 from fastapi import APIRouter, status
 from pydantic import BaseModel
 
-from app.services.rag import validate_index
+from app.services.rag import index_path_from_environment, validate_index
 
 router = APIRouter(tags=["health"])
 
@@ -35,11 +33,8 @@ def liveness() -> Liveness:
 )
 def readiness() -> Readiness:
     """Report index files separately from the still-unimplemented inventory DB."""
-    data_dir = os.getenv("DATA_DIR")
-    default_path = (Path(data_dir) / "indexes/niosh_five" if data_dir else
-                    Path(__file__).resolve().parents[3] / "datapipeline/data/indexes/niosh_five")
     try:
-        validate_index(Path(os.getenv("RAG_INDEX_PATH", str(default_path))))
+        validate_index(index_path_from_environment())
         index_ready = True
     except (OSError, ValueError):
         index_ready = False

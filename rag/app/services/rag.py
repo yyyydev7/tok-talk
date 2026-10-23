@@ -54,6 +54,13 @@ def validate_index(path: Path) -> None:
         raise FileNotFoundError("FAISS 인덱스 파일이 없습니다.")
 
 
+def index_path_from_environment() -> Path:
+    data_dir = os.getenv("DATA_DIR")
+    default_path = (Path(data_dir) / "indexes/current" if data_dir else
+                    Path(__file__).resolve().parents[3] / "datapipeline/data/indexes/current")
+    return Path(os.getenv("RAG_INDEX_PATH", str(default_path)))
+
+
 def load_store(path: Path) -> Any:
     """Load only a trusted, locally produced handoff (index.pkl is pickle)."""
     validate_index(path)
@@ -102,11 +109,7 @@ class RagService:
 
     @classmethod
     def from_environment(cls) -> "RagService":
-        data_dir = os.getenv("DATA_DIR")
-        default_path = (Path(data_dir) / "indexes/niosh_five" if data_dir else
-                        Path(__file__).resolve().parents[3] / "datapipeline/data/indexes/niosh_five")
-        path = Path(os.environ.get("RAG_INDEX_PATH", str(default_path)))
-        return cls(load_store(path))
+        return cls(load_store(index_path_from_environment()))
 
     def search(self, material_id: str, question: str, top_k: int = 5) -> list[Evidence]:
         if material_id not in MATERIALS:

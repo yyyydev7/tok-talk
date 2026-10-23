@@ -5,9 +5,9 @@ HttpOnly 쿠키를 RAG 서버에서 검증합니다.
 
 ## 데이터와 모델
 
-`../datapipeline/data/indexes/kosha_niosh_20261023/`의 KOSHA·NIOSH FAISS 인덱스를
-읽기 전용으로 사용합니다. `RAG_INDEX_PATH`로 경로를 지정합니다. 현재 로컬
-`.env`는 `/data/indexes/kosha_niosh_20261023`을 가리킵니다. 인덱스의
+`../datapipeline/data/indexes/current/`의 KOSHA·NIOSH FAISS 인덱스를
+읽기 전용으로 사용합니다. Compose의 `indexer`가 인덱스 준비를 확인한 뒤 RAG를
+시작합니다. `RAG_INDEX_PATH`로 경로를 바꿀 수 있습니다. 인덱스의
 `index.pkl`은 pickle이므로 신뢰하는 팀 산출물만 로드하세요.
 
 검색은 인덱스 생성 때와 같은 `BAAI/bge-m3` 정규화 임베딩을 사용하고,

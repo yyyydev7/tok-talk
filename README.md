@@ -38,8 +38,8 @@
     ├─ compose.demo.yaml
     └─ .env.example
 
-현재는 Vue 시작 화면, Java/FastAPI 최소 서버, 빈 MariaDB를 제공하는 개발 골격입니다.
-로그인·JWT 검증·문서 적재·RAG 답변·재고 조회는 아직 구현하지 않았습니다.
+현재 Vue 화면, Java 로그인·JWT, FastAPI RAG 답변과 MariaDB를 제공합니다.
+시연용 재고 조회는 아직 구현되지 않았습니다.
 기획 문서의 기준과 미결정 사항은 [설계 결정](backend/docs/decisions.md),
 담당 범위는 [협업 규칙](backend/docs/contributing.md)에 있습니다.
 
@@ -47,6 +47,10 @@
 
 Docker Desktop의 Linux 컨테이너 환경, Docker Compose, Python 3가 필요합니다.
 명령은 이 README가 있는 tok-talk 디렉터리에서 실행합니다.
+
+첫 실행 시 `.env`에 `KOSHA_API_KEY`를 설정하세요. Compose의 `indexer`가
+KOSHA·NIOSH 인덱스를 생성하고, 이후에는 입력이 바뀌거나 KOSHA 갱신 주기가
+도래한 경우에만 자료를 다시 확인합니다. 내용이 같으면 청킹·임베딩은 재사용합니다.
 
     python3 infra/scripts/init_env.py
     docker compose --env-file .env -f compose.dev.yaml up --build -d --wait
@@ -57,14 +61,16 @@ Docker Desktop의 Linux 컨테이너 환경, Docker Compose, Python 3가 필요�
 포트를 바꾸면 .env의 관련 주소와 CORS_ORIGINS도 함께 변경하세요.
 
 /health/live는 프로세스 생존을 200으로 응답합니다.
-/health는 미구현 기능을 준비 완료로 표시하지 않고 503을 응답합니다.
-화면은 아직 업무 API를 호출하지 않습니다.
+/health는 재고 조회 미구현 상태를 반영해 503을 응답하지만,
+`index_ready`로 RAG 인덱스 상태를 확인할 수 있습니다.
 
     docker compose --env-file .env -f compose.dev.yaml down
 
 이 중지 명령은 DB 볼륨을 보존합니다.
 
 ## 데모와 검증
+
+데모에서 처음 인덱스를 만들려면 `.env.demo`에도 `KOSHA_API_KEY`를 설정하세요.
 
     python3 infra/scripts/init_env.py --demo
     docker compose --env-file .env.demo -f compose.demo.yaml up --build -d --wait

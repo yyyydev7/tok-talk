@@ -1,6 +1,6 @@
 # 데이터 파이프라인
 
-KOSHA MSDS API와 NIOSH Pocket Guide PDF를 사용해 5개 물질을 수집·정제하고 BGE-M3 및 FAISS 인덱스를 생성합니다. NIOSH 웹페이지는 수집하지 않습니다. 파이프라인과 RAG 서버는 독립적으로 실행하며, 서버 시작 시 수집 또는 인덱싱을 수행하지 않습니다.
+KOSHA MSDS API와 NIOSH Pocket Guide PDF를 사용해 5개 물질을 수집·정제하고 BGE-M3 및 FAISS 인덱스를 생성합니다. NIOSH 웹페이지는 수집하지 않습니다. Compose의 `indexer`가 RAG 시작 전에 인덱스를 확인하고, 필요할 때만 다시 생성합니다.
 
 ## 구조
 
@@ -19,7 +19,32 @@ uv lock
 uv sync --locked
 ```
 
-`resources/NIOSH.pdf`에 원본 PDF를 둡니다. 제공된 다섯 물질 페이지에 맞춘 2007년판 PDF가 필요합니다. API 수집 시 `datapipeline/.env`에 `KOSHA_API_KEY`를 설정합니다. `answer` 명령에는 `OPENAI_API_KEY`도 필요합니다. 실제 키는 Git에 포함하지 않습니다.
+`resources/NIOSH.pdf`에 원본 PDF를 둡니다. 제공된 다섯 물질 페이지에 맞춘 2007년판 PDF가 필요합니다. 자동 빌더는 저장소 루트 `.env`의 `KOSHA_API_KEY`를 읽습니다. Compose는 키를 `indexer`에만 전달합니다. 첫 인덱스 생성에는 키가 필요합니다. `answer` 명령에는 `OPENAI_API_KEY`도 필요합니다. 실제 키는 Git에 포함하지 않습니다.
+
+## 자동 생성·갱신
+
+`python -m pipeline.build_if_changed`는 `data/indexes/current`에 완성된 인덱스가
+있고 입력 파일이 그대로이며 마지막 KOSHA 확인 후 24시간이 지나지 않았다면 즉시
+재사용합니다. 인덱스가 없거나 PDF·파이프라인 설정이 바뀌면 새로 생성합니다. 갱신
+시점에는 KOSHA를 다시 조회하지만 내용이 같으면 임베딩을 반복하지 않습니다.
+`KOSHA_REFRESH_HOURS`로 확인 주기를 바꿀 수 있습니다. API가 일시적으로 실패하면
+기존의 유효한 인덱스를 유지합니다. 새 인덱스가 완성되면 `current` 링크를 한 번에
+교체하며, 이전 인덱스 폴더도 보존합니다.
+
+```bash
+# 저장소 루트에서 처음 실행하거나 Compose를 다시 올릴 때
+docker compose --env-file .env -f compose.dev.yaml up --build -d --wait
+
+# KOSHA 변경을 지금 확인하고 싶을 때
+docker compose --env-file .env -f compose.dev.yaml run --rm indexer \
+  python -m pipeline.build_if_changed --refresh
+```
+
+로컬 Python으로 실행할 때는 `datapipeline` 폴더에서 `uv run --locked python -m
+pipeline.build_if_changed`를 사용합니다. `docker compose restart`는 완료된 `indexer`
+작업을 다시 실행하지 않으므로, 갱신 확인을 포함한 재시작에는 위 `up` 명령이나
+수동 갱신 명령을 사용하세요. 새 인덱스가 적용되면 RAG는 다음 요청에서 변경된
+`current` 링크를 감지해 새 인덱스를 로드합니다.
 
 ## 실행
 

@@ -36,10 +36,26 @@ services:
     ports:
       - "127.0.0.1:${AUTH_PORT:-8080}:8080"
 
+  indexer:
+    build:
+      context: ./datapipeline
+    environment:
+      DATA_DIR: /data
+      NIOSH_PDF_PATH: /app/resources/NIOSH.pdf
+      KOSHA_API_KEY: ${KOSHA_API_KEY:-}
+      KOSHA_REFRESH_HOURS: ${KOSHA_REFRESH_HOURS:-24}
+      HF_HOME: /models
+    volumes:
+      - ./datapipeline/data:/data
+      - embedding_cache:/models
+
   rag:
     build:
       context: ./rag
       target: development
+    depends_on:
+      indexer:
+        condition: service_completed_successfully
     environment:
       PORT: "8001"
       JWT_SECRET: ${JWT_SECRET:?Run infra/scripts/init_env.py first}
@@ -51,8 +67,8 @@ services:
       DB_USER: ${DB_USER:-toktalk}
       DB_PASSWORD: ${DB_PASSWORD:?Run infra/scripts/init_env.py first}
       DATA_DIR: /data
-      RAG_INDEX_PATH: ${RAG_INDEX_PATH:-/data/indexes/niosh_five}
-      LLM_API_KEY: ${LLM_API_KEY:-}
+      RAG_INDEX_PATH: ${RAG_INDEX_PATH:-/data/indexes/current}
+      LLM_API_KEY: ${LLM_API_KEY:-${OPENAI_API_KEY:-}}
     volumes:
       - ./rag/app:/app/app
       - ./datapipeline/data:/data:ro
@@ -80,3 +96,4 @@ services:
 
 volumes:
   db_data:
+  embedding_cache:

@@ -5,12 +5,14 @@ import json
 import os
 import time
 import unittest
+from pathlib import Path
+from tempfile import TemporaryDirectory
 from types import SimpleNamespace
 from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
-from app.api.rag import _service
+from app.api.rag import _service, _service_for_index, get_service
 from app.main import create_app
 
 
@@ -96,6 +98,27 @@ class RagApiTest(unittest.TestCase):
             with self.subTest(body=body):
                 self.assertEqual(self.client.post("/rag-query", headers=self.auth(),
                                                   json=body).status_code, 422)
+
+    def test_index_swap_loads_new_store(self):
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            first, second = root / "first", root / "second"
+            first.mkdir()
+            second.mkdir()
+            current = root / "current"
+            current.symlink_to(first, target_is_directory=True)
+            _service_for_index.cache_clear()
+            with patch.dict(os.environ, {"RAG_INDEX_PATH": str(current)}), \
+                 patch("app.api.rag.load_store", side_effect=lambda path: str(path)):
+                old = get_service()
+                self.assertIs(get_service(), old)
+                replacement = root / "replacement"
+                replacement.symlink_to(second, target_is_directory=True)
+                os.replace(replacement, current)
+                new = get_service()
+                self.assertIsNot(new, old)
+                self.assertEqual(new.store, str(second.resolve()))
+            _service_for_index.cache_clear()
 
 
 if __name__ == "__main__":

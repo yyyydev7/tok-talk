@@ -2,12 +2,13 @@
 
 import re
 from functools import lru_cache
+from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field, field_validator
 
 from app.security.jwt import verify_access_token
-from app.services.rag import MATERIALS, SOURCE_TYPES, RagService
+from app.services.rag import MATERIALS, SOURCE_TYPES, RagService, index_path_from_environment, load_store
 
 router = APIRouter(tags=["rag"], dependencies=[Depends(verify_access_token)])
 
@@ -37,8 +38,14 @@ class SelectedQuestion(Question):
 
 
 @lru_cache(maxsize=1)
+def _service_for_index(path: str) -> RagService:
+    return RagService(load_store(Path(path)))
+
+
 def get_service() -> RagService:
-    return RagService.from_environment()
+    # Resolve the atomic ``current`` symlink on every request. Reuse the loaded
+    # store while it points to the same build; load the new build after a swap.
+    return _service_for_index(str(index_path_from_environment().resolve()))
 
 
 def _loaded_materials(service: RagService) -> set[str]:
