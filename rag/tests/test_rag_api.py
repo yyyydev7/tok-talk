@@ -99,6 +99,23 @@ class RagApiTest(unittest.TestCase):
                 self.assertEqual(self.client.post("/rag-query", headers=self.auth(),
                                                   json=body).status_code, 422)
 
+    def test_korean_name_typo_falls_back_to_unique_material(self):
+        for question in ("이세톤의 노출 경로는?", "아세토의 노출 경로는?"):
+            with self.subTest(question=question):
+                response = self.client.post("/rag-query/auto", headers=self.auth(),
+                                            json={"question": question})
+                self.assertEqual(response.json()["material"]["material_id"], "acetone")
+        results = self.client.get("/chemicals?query=이세톤", headers=self.auth()).json()
+        self.assertEqual([item["material_id"] for item in results["items"]], ["acetone"])
+
+    def test_exact_match_wins_and_cas_is_not_fuzzy_matched(self):
+        response = self.client.post("/rag-query/auto", headers=self.auth(), json={
+            "question": "이세톤과 메탄올의 차이는?"})
+        self.assertEqual(response.json()["material"]["material_id"], "methanol")
+        response = self.client.post("/rag-query/auto", headers=self.auth(), json={
+            "question": "CAS 67-64-2의 노출 경로는?"})
+        self.assertEqual(response.json()["resolution"]["status"], "not_found")
+
     def test_index_swap_loads_new_store(self):
         with TemporaryDirectory() as directory:
             root = Path(directory)
