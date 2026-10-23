@@ -2,7 +2,7 @@
 
 명령은 프로젝트 루트에서 실행합니다.
 
-    python3 backend/scripts/init_env.py
+    python3 infra/scripts/init_env.py
     docker compose --env-file .env -f compose.dev.yaml config --quiet
     docker compose --env-file .env -f compose.dev.yaml up --build -d --wait
 
@@ -33,7 +33,7 @@ DB를 사용하는 초기화 작업에는 db의 service_healthy 의존성을 추
 다음 명령은 다른 COMPOSE_PROJECT_NAME과 새로운 비밀값을 가진 .env.demo를 생성합니다.
 기존 파일은 덮어쓰지 않습니다.
 
-    python3 backend/scripts/init_env.py --demo
+    python3 infra/scripts/init_env.py --demo
     docker compose --env-file .env.demo -f compose.demo.yaml up --build -d --wait
 
 접속: http://localhost:8088 (DEMO_HTTP_PORT로 변경 가능).
@@ -51,12 +51,24 @@ down은 볼륨을 보존합니다. 비밀번호 환경변수를 바꿔도 이미
 기존 데이터베이스는 담당자가 마이그레이션·계정 변경 절차로 관리합니다.
 
 DB 변경 SQL은 backend/db/migrations, 시연 시드는 backend/db/seeds에 추가합니다.
-프록시 설정은 backend/deploy/proxy/nginx.conf에 있습니다.
+프록시 설정은 infra/proxy/nginx.conf에 있습니다.
 
 ## CI 템플릿
 
-최상위 폴더 4개를 유지하기 위해 github-actions.yml을 이 폴더에 보관합니다.
+github-actions.yml을 CI 템플릿으로 이 폴더에 보관합니다.
 현재 위치에서는 GitHub Actions가 실행되지 않습니다. GitHub는 저장소 루트의
 .github/workflows 안에 있는 워크플로 파일만 자동으로 탐색합니다.
 추후 CI를 활성화할 때 이 파일을 .github/workflows/ci.yml로 옮기세요.
 템플릿의 명령은 이 프로젝트 디렉터리를 팀 저장소 루트로 사용하는 것을 전제로 합니다.
+
+## backend에서 분리한 파일
+
+- backend/deploy/proxy → infra/proxy
+- backend/deploy/github-actions.yml → infra/github-actions.yml
+- backend/scripts → infra/scripts
+- backend/tests/e2e → infra/tests/e2e
+
+Compose 파일과 환경변수 파일은 저장소 루트에 유지합니다.
+Java 소스·API 계약·DB SQL·서비스별 Dockerfile은 원래 위치에 유지합니다.
+frontend, rag, datapipeline 폴더는 수정하지 않았습니다.
+frontend/README.md와 rag/tests/README.md에 있는 이전 배포 경로는 위 이동표를 참고하세요.

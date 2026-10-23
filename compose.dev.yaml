@@ -6,8 +6,8 @@ services:
     environment:
       MARIADB_DATABASE: ${DB_NAME:-tok_talk}
       MARIADB_USER: ${DB_USER:-toktalk}
-      MARIADB_PASSWORD: ${DB_PASSWORD:?Run backend/scripts/init_env.py first}
-      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?Run backend/scripts/init_env.py first}
+      MARIADB_PASSWORD: ${DB_PASSWORD:?Run infra/scripts/init_env.py first}
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?Run infra/scripts/init_env.py first}
     ports:
       - "127.0.0.1:${DB_HOST_PORT:-13306}:3306"
     volumes:
@@ -25,13 +25,13 @@ services:
       target: development
     environment:
       PORT: "8080"
-      JWT_SECRET: ${JWT_SECRET:?Run backend/scripts/init_env.py first}
+      JWT_SECRET: ${JWT_SECRET:?Run infra/scripts/init_env.py first}
       JWT_ISSUER: ${JWT_ISSUER:-simple-auth-server}
       DB_HOST: db
       DB_PORT: "3306"
       DB_NAME: ${DB_NAME:-tok_talk}
       DB_USER: ${DB_USER:-toktalk}
-      DB_PASSWORD: ${DB_PASSWORD:?Run backend/scripts/init_env.py first}
+      DB_PASSWORD: ${DB_PASSWORD:?Run infra/scripts/init_env.py first}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5174}
     ports:
       - "127.0.0.1:${AUTH_PORT:-8080}:8080"
@@ -42,14 +42,14 @@ services:
       target: development
     environment:
       PORT: "8001"
-      JWT_SECRET: ${JWT_SECRET:?Run backend/scripts/init_env.py first}
+      JWT_SECRET: ${JWT_SECRET:?Run infra/scripts/init_env.py first}
       JWT_ISSUER: ${JWT_ISSUER:-simple-auth-server}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5174}
       DB_HOST: db
       DB_PORT: "3306"
       DB_NAME: ${DB_NAME:-tok_talk}
       DB_USER: ${DB_USER:-toktalk}
-      DB_PASSWORD: ${DB_PASSWORD:?Run backend/scripts/init_env.py first}
+      DB_PASSWORD: ${DB_PASSWORD:?Run infra/scripts/init_env.py first}
       DATA_DIR: /data
       LLM_API_KEY: ${LLM_API_KEY:-}
     volumes:

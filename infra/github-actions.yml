@@ -76,11 +76,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - run: python backend/scripts/init_env.py
+      - run: python infra/scripts/init_env.py
       - run: docker compose --env-file .env -f compose.dev.yaml config --quiet
       - run: docker compose --env-file .env -f compose.demo.yaml config --quiet
       - run: docker compose --env-file .env -f compose.dev.yaml up --build -d --wait --wait-timeout 180
-      - run: python backend/tests/e2e/smoke.py
+      - run: python infra/tests/e2e/smoke.py
       - name: Service status
         if: failure()
         run: docker compose --env-file .env -f compose.dev.yaml ps --all
@@ -96,9 +96,9 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - run: python backend/scripts/init_env.py --demo
+      - run: python infra/scripts/init_env.py --demo
       - run: docker compose --env-file .env.demo -f compose.demo.yaml up --build -d --wait --wait-timeout 180
-      - run: python backend/tests/e2e/proxy_smoke.py
+      - run: python infra/tests/e2e/proxy_smoke.py
       - name: Service status
         if: failure()
         run: docker compose --env-file .env.demo -f compose.demo.yaml ps --all
