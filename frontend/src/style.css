@@ -227,6 +227,12 @@ input::placeholder, textarea::placeholder { color: #a4ada6; }
 .auth-form { display: grid; }
 .auth-form label { margin: 0 0 7px; }
 .auth-form input { height: 44px; margin-bottom: 16px; }
+.password-field { position: relative; margin-bottom: 16px; }
+.auth-form .password-field input { margin-bottom: 0; padding-right: 46px; }
+.password-visibility { position: absolute; top: 50%; right: 8px; display: grid; width: 32px; height: 32px; padding: 6px; place-items: center; transform: translateY(-50%); border: 0; border-radius: 6px; background: transparent; color: #718078; cursor: pointer; }
+.password-visibility:hover { background: #f1f5f1; color: var(--green); }
+.password-visibility:focus-visible { outline: 2px solid #6da388; outline-offset: 1px; }
+.password-visibility svg { width: 19px; height: 19px; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 .full-button { height: 43px; margin-top: 4px; font-size: 11px; }
 .switch-auth { display: block; width: 100%; margin-top: 17px; padding: 7px; border: 0; color: #748078; background: none; font-size: 10px; text-align: center; text-decoration: none; }
 .auth-footnote { margin-top: 18px; padding-top: 15px; border-top: 1px solid #edf0ec; color: #949d96; font-size: 9px; line-height: 1.6; }

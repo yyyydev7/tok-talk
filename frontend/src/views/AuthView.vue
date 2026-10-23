@@ -8,6 +8,7 @@ const route = useRoute()
 const router = useRouter()
 const authUsername = ref('')
 const password = ref('')
+const showPassword = ref(false)
 const busy = ref(false)
 const title = computed(() => props.mode === 'login' ? '다시 오셨군요' : '계정 만들기')
 
@@ -62,7 +63,25 @@ async function retryAuth() {
           <label for="username">아이디</label>
           <input id="username" v-model="authUsername" autocomplete="username" placeholder="아이디 입력" required />
           <label for="password">비밀번호</label>
-          <input id="password" v-model="password" :autocomplete="props.mode === 'login' ? 'current-password' : 'new-password'" type="password" minlength="8" maxlength="128" placeholder="비밀번호 입력" required />
+          <div class="password-field">
+            <input id="password" v-model="password" :autocomplete="props.mode === 'login' ? 'current-password' : 'new-password'" :type="showPassword ? 'text' : 'password'" minlength="8" maxlength="128" placeholder="비밀번호 입력" required />
+            <button
+              class="password-visibility"
+              type="button"
+              :aria-label="showPassword ? '비밀번호 숨기기' : '비밀번호 표시'"
+              :aria-pressed="showPassword"
+              @click="showPassword = !showPassword"
+            >
+              <svg v-if="!showPassword" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M2.5 12s3.3-6 9.5-6 9.5 6 9.5 6-3.3 6-9.5 6-9.5-6-9.5-6Z" />
+                <circle cx="12" cy="12" r="2.7" />
+              </svg>
+              <svg v-else viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="m3 3 18 18M10.6 6.2A10.8 10.8 0 0 1 12 6c6.2 0 9.5 6 9.5 6a16 16 0 0 1-3 3.7M6.2 6.8C3.8 8.4 2.5 12 2.5 12s3.3 6 9.5 6c1.4 0 2.6-.3 3.7-.8" />
+                <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" />
+              </svg>
+            </button>
+          </div>
           <p v-if="authError" class="inline-error" role="alert">{{ authError }}</p>
           <button class="button button-primary full-button" type="submit" :disabled="busy">
             {{ busy ? '요청 중…' : props.mode === 'login' ? '로그인' : '회원가입' }}
