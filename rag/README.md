@@ -1,24 +1,24 @@
 # 톡talk RAG API
 
 Vue가 FastAPI `:8001`을 직접 호출합니다. Java 인증 서버가 발급한 `ACCESS_TOKEN`
-HttpOnly 쿠키를 RAG 서버에서 검증합니다. 현재 Java 서버는 인증 골격만 있으므로
-실제 로그인 연동은 Java 구현 후 확인해야 합니다.
+HttpOnly 쿠키를 RAG 서버에서 검증합니다.
 
 ## 데이터와 모델
 
-`../datapipeline/data/indexes/niosh_five/`의 팀 생성 FAISS 인덱스를 읽기 전용으로
-사용합니다. `RAG_INDEX_PATH`로 다른 위치를 지정할 수 있습니다. Compose에서는
-`DATA_DIR=/data`를 통해 `/data/indexes/niosh_five`를 사용합니다. 인덱스의
+`../datapipeline/data/indexes/kosha_niosh_20261023/`의 KOSHA·NIOSH FAISS 인덱스를
+읽기 전용으로 사용합니다. `RAG_INDEX_PATH`로 경로를 지정합니다. 현재 로컬
+`.env`는 `/data/indexes/kosha_niosh_20261023`을 가리킵니다. 인덱스의
 `index.pkl`은 pickle이므로 신뢰하는 팀 산출물만 로드하세요.
 
 검색은 인덱스 생성 때와 같은 `BAAI/bge-m3` 정규화 임베딩을 사용하고,
-선택한 CAS 번호와 `NIOSH PDF` 출처로 제한합니다. 답변 생성 기본 모델은
+선택한 CAS 번호와 `KOSHA`·`NIOSH PDF` 출처로 제한합니다. 답변 생성 기본 모델은
 `gpt-4o-mini`이며 `RAG_LLM_MODEL`로 변경할 수 있습니다. 서버 환경에
 `OPENAI_API_KEY` 또는 `LLM_API_KEY`를 설정합니다. 키는 Vue에 전달하지 않습니다.
 
-현재 출처는 NIOSH PDF 파일명·페이지를 반환합니다. `url`은 PDF 자료에 원문 웹
-URL이 없어 빈 문자열입니다. `checked_at`은 수집 확인일이며 원문 개정일이
-아닙니다. PDF를 브라우저에서 열 수 있는 주소는 별도 정적 파일 배포가 필요합니다.
+NIOSH 근거는 PDF 파일명·페이지를, KOSHA 근거는 출처 URL을 반환합니다. PDF의
+`url`은 원문 웹 URL이 없어 빈 문자열입니다. `checked_at`은 수집 확인일이며
+원문 개정일이 아닙니다. PDF를 브라우저에서 열 수 있는 주소는 별도 정적 파일
+배포가 필요합니다.
 
 ## Vue에서 호출할 API
 

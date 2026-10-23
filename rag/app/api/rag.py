@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field, field_validator
 
 from app.security.jwt import verify_access_token
-from app.services.rag import MATERIALS, RagService
+from app.services.rag import MATERIALS, SOURCE_TYPES, RagService
 
 router = APIRouter(tags=["rag"], dependencies=[Depends(verify_access_token)])
 
@@ -42,12 +42,12 @@ def get_service() -> RagService:
 
 
 def _loaded_materials(service: RagService) -> set[str]:
-    """Expose only materials with NIOSH PDF chunks in the loaded index."""
+    """Expose only materials with supported official chunks in the loaded index."""
     store = service.store
     loaded = set()
     for doc_id in store.index_to_docstore_id.values():
         doc = store.docstore.search(doc_id)
-        if not hasattr(doc, "metadata") or doc.metadata.get("source") != "NIOSH PDF":
+        if not hasattr(doc, "metadata") or doc.metadata.get("source") not in SOURCE_TYPES:
             continue
         for material_id, (_, cas) in MATERIALS.items():
             if doc.metadata.get("cas_no") == cas:
@@ -116,7 +116,7 @@ def chemicals(query: str = "", service: RagService = Depends(_service)) -> dict:
             continue
         items.append({"material_id": material_id, "name": name,
                       "aliases": ALIASES[material_id], "cas_number": cas,
-                      "source_title": "NIOSH Pocket Guide to Chemical Hazards"})
+                      "source_title": "KOSHA MSDS · NIOSH Pocket Guide"})
     return {"items": items}
 
 

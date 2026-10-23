@@ -42,14 +42,25 @@ def glossary_hit():
 
 
 class RagServiceTest(unittest.TestCase):
-    def test_cas_and_source_are_restricted_and_cited(self):
+    def test_cas_is_restricted_and_supported_sources_are_cited(self):
         store = FakeStore([hit(), hit("67-56-1"), hit(source="KOSHA")])
         result = RagService(store, FakeLlm("흡입 노출 가능 [근거 1]")).answer("acetone", "노출 경로는?")
-        self.assertEqual(store.filters[0], {"cas_no": "67-64-1", "source": "NIOSH PDF"})
+        self.assertEqual(store.filters[0], {"cas_no": "67-64-1"})
         self.assertFalse(result["needs_review"])
         self.assertEqual(len(result["sources"]), 1)
         self.assertEqual(result["sources"][0]["checked_at"], "2026-10-23")
         self.assertEqual(result["sources"][0]["pdf_page"], "33")
+
+    def test_kosha_source_is_returned_without_pdf_location(self):
+        doc, score = hit(source="KOSHA")
+        doc.metadata.update(source_file="", pdf_page="", source_url="https://example.org/msds")
+        result = RagService(FakeStore([(doc, score)]), FakeLlm("흡입 노출 가능 [근거 1]")).answer(
+            "acetone", "노출 경로는?"
+        )
+        self.assertFalse(result["needs_review"])
+        self.assertEqual(result["sources"][0]["title"], "KOSHA MSDS — 아세톤")
+        self.assertEqual(result["sources"][0]["url"], "https://example.org/msds")
+        self.assertEqual(result["sources"][0]["pdf_page"], "")
 
     def test_missing_or_invalid_citation_needs_review(self):
         for answer in ("근거 없음", "임의 답변 [근거 9]"):

@@ -51,6 +51,7 @@ services:
       DB_USER: ${DB_USER:-toktalk}
       DB_PASSWORD: ${DB_PASSWORD:?Run infra/scripts/init_env.py first}
       DATA_DIR: /data
+      RAG_INDEX_PATH: ${RAG_INDEX_PATH:-/data/indexes/niosh_five}
       LLM_API_KEY: ${LLM_API_KEY:-}
     volumes:
       - ./rag/app:/app/app
