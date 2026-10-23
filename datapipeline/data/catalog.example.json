@@ -1,0 +1,12 @@
+{
+  "example_only": true,
+  "items": [
+    {
+      "material_id": "acetone",
+      "name": "아세톤",
+      "aliases": ["Acetone"],
+      "cas_number": "67-64-1",
+      "source_url": "https://www.cdc.gov/niosh/npg/npgd0004.html"
+    }
+  ]
+}

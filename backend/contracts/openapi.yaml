@@ -1,0 +1,376 @@
+openapi: 3.1.0
+info:
+  title: 톡talk 공동 API 구현 목표
+  version: 0.3.0
+  description: |
+    첨부 API v0.3 기반 목표 계약. planned 경로는 아직 구현되지 않았습니다.
+    현재 골격은 상태 확인만 제공합니다. 오류 본문의 공통 형식은 추가 합의가 필요합니다.
+servers:
+  - url: http://localhost:8001
+    description: FastAPI 개발 서버
+security:
+  - AccessCookie: []
+paths:
+  /api/signup:
+    servers:
+      - url: http://localhost:8080
+    post:
+      operationId: signup
+      x-implementation-status: planned
+      security: []
+      summary: 회원가입
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Credentials'
+      responses:
+        '302':
+          description: /login으로 이동
+          headers:
+            Location:
+              schema:
+                type: string
+        '400':
+          description: 필수값 누락 또는 중복 사용자명, 텍스트 응답
+        '500':
+          description: 서버 또는 DB 오류
+  /api/login:
+    servers:
+      - url: http://localhost:8080
+    post:
+      operationId: login
+      x-implementation-status: planned
+      security: []
+      summary: 로그인과 HttpOnly JWT 쿠키 발급
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Credentials'
+      responses:
+        '200':
+          description: 로그인 성공. ACCESS_TOKEN과 세션 쿠키를 Set-Cookie로 발급
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, redirect]
+                properties:
+                  ok:
+                    type: boolean
+                  redirect:
+                    type: string
+        '400':
+          description: 필수값 누락
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          description: 서버 오류
+  /api/auth/check:
+    servers:
+      - url: http://localhost:8080
+    get:
+      operationId: checkAuth
+      x-implementation-status: planned
+      summary: 로그인 상태 확인
+      description: |
+        v0.3은 세션 또는 JWT를 허용합니다.
+        FastAPI는 JWT만 인정하므로 두 서버의 판정 일치 정책을 확정해야 합니다.
+      responses:
+        '200':
+          description: ok, via, username 및 JWT인 경우 sub
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/logout:
+    servers:
+      - url: http://localhost:8080
+    post:
+      operationId: logout
+      x-implementation-status: planned
+      summary: 세션 종료와 쿠키 삭제
+      description: 발급한 JWT 자체의 조기 폐기는 v0.3에 포함되지 않습니다.
+      responses:
+        '302':
+          description: /login으로 이동
+  /chemicals:
+    get:
+      operationId: listChemicals
+      x-implementation-status: planned
+      summary: 실제 적재된 물질의 이름·동의어 검색
+      parameters:
+        - name: query
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: query가 없으면 적재된 전체 물질, 있으면 일치 목록
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      allOf:
+                        - $ref: '#/components/schemas/Material'
+                        - type: object
+                          required: [aliases, source_title]
+                          properties:
+                            aliases:
+                              type: array
+                              items:
+                                type: string
+                            source_title:
+                              type: string
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /rag-query:
+    post:
+      operationId: queryMaterial
+      x-implementation-status: planned
+      summary: 선택한 물질의 근거로 질문
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/Question'
+                - type: object
+                  required: [material_id]
+                  properties:
+                    material_id:
+                      type: string
+      responses:
+        '200':
+          $ref: '#/components/responses/RagAnswer'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/InvalidRequest'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /rag-query/auto:
+    post:
+      operationId: queryAuto
+      x-implementation-status: planned
+      summary: 등록된 이름·동의어 사전으로 물질을 확정한 뒤 질문
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Question'
+      responses:
+        '200':
+          $ref: '#/components/responses/RagAnswer'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/InvalidRequest'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /inventory:
+    get:
+      operationId: getInventory
+      x-implementation-status: planned
+      summary: 물질의 시연 재고를 DB에서 조회
+      parameters:
+        - name: material_id
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 조회된 행 목록. 빈 목록은 수량 0을 뜻하지 않습니다.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [material_id, is_demo, items]
+                properties:
+                  material_id:
+                    type: string
+                  is_demo:
+                    type: boolean
+                    const: true
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/InventoryItem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/InvalidRequest'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /health:
+    get:
+      operationId: getHealth
+      x-implementation-status: scaffold
+      security: []
+      summary: FastAPI 기능 준비 상태
+      responses:
+        '200':
+          description: 필수 기능 준비 완료 (현재 골격은 반환하지 않음)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Health'
+        '503':
+          description: 인덱스 또는 재고 DB 미준비. 현재 골격의 정상 상태
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Health'
+  /health/live:
+    get:
+      operationId: getLiveness
+      x-implementation-status: scaffold
+      security: []
+      summary: 프로세스 생존 확인 (골격에서 추가한 경로)
+      responses:
+        '200':
+          description: 프로세스가 응답함. 업무 기능 준비를 보장하지 않음
+components:
+  securitySchemes:
+    AccessCookie:
+      type: apiKey
+      in: cookie
+      name: ACCESS_TOKEN
+  responses:
+    Unauthorized:
+      description: 쿠키 없음, 서명·만료·발급자 검증 실패
+    InvalidRequest:
+      description: 필수값 누락, 잘못된 형식·material_id·top_k
+    Unavailable:
+      description: 해당 기능이 의존하는 인덱스·LLM·DB 사용 불가
+    RagAnswer:
+      description: 근거 답변 또는 확인 필요. 물질 미확정 시 생성하지 않음
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Answer'
+  schemas:
+    Credentials:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+          minLength: 1
+        password:
+          type: string
+          format: password
+          minLength: 1
+    Question:
+      type: object
+      required: [question]
+      properties:
+        question:
+          type: string
+          minLength: 1
+          pattern: '\S'
+        top_k:
+          type: integer
+          default: 5
+          minimum: 1
+          maximum: 10
+    Material:
+      type: object
+      required: [material_id, name, cas_number]
+      properties:
+        material_id:
+          type: string
+        name:
+          type: string
+        cas_number:
+          type: string
+    Source:
+      type: object
+      required: [cas_number, title, section, url, checked_at]
+      properties:
+        cas_number:
+          type: string
+        title:
+          type: string
+        section:
+          type: string
+        url:
+          type: string
+          format: uri
+        checked_at:
+          type: string
+          format: date
+          description: 팀의 수집·확인일. 원문 개정일이 아님
+    Answer:
+      type: object
+      required: [answer, sources, needs_review, material, resolution]
+      properties:
+        answer:
+          type: string
+        sources:
+          type: array
+          items:
+            $ref: '#/components/schemas/Source'
+        needs_review:
+          type: boolean
+        material:
+          anyOf:
+            - $ref: '#/components/schemas/Material'
+            - type: 'null'
+        resolution:
+          type: object
+          required: [status, candidates]
+          properties:
+            status:
+              type: string
+              enum: [resolved, not_found, ambiguous]
+            candidates:
+              type: array
+              items:
+                type: object
+                required: [material_id, name]
+                properties:
+                  material_id:
+                    type: string
+                  name:
+                    type: string
+    InventoryItem:
+      type: object
+      required: [item_id, display_name, quantity, unit, location, updated_at]
+      properties:
+        item_id:
+          type: string
+        display_name:
+          type: string
+        quantity:
+          type: number
+        unit:
+          type: string
+        location:
+          type: string
+        updated_at:
+          type: string
+          format: date-time
+    Health:
+      type: object
+      required: [status, index_ready, inventory_db_ready]
+      properties:
+        status:
+          type: string
+          enum: [ok, degraded]
+        index_ready:
+          type: boolean
+        inventory_db_ready:
+          type: boolean
