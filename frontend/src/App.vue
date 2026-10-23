@@ -32,7 +32,7 @@ async function signOut() {
     </div>
 
     <header class="topbar">
-      <RouterLink class="brand" :to="{ name: 'question' }" aria-label="톡talk 홈"><span class="brand-mark">t</span><span>톡,talk</span></RouterLink>
+      <RouterLink class="brand" :to="{ name: 'question' }" aria-label="톡,talk 홈"><span class="brand-logo-window"><img class="brand-logo" src="/media/tok-talk-brand-mark.png?v=3" alt="" /></span><span>톡,talk</span></RouterLink>
       <nav v-if="authState === 'signed-in'" class="app-navigation" aria-label="주요 메뉴">
         <RouterLink :to="{ name: 'question' }" exact-active-class="active">질문</RouterLink>
         <RouterLink :to="{ name: 'materials' }" exact-active-class="active">물질 검색</RouterLink>
