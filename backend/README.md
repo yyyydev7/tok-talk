@@ -46,7 +46,7 @@ curl -i http://localhost:8080/health
 ```
 
 회원가입과 로그인은 `application/x-www-form-urlencoded` 요청을 받습니다. 사용자명은 영문자·숫자·점·밑줄·하이픈 3~64자,
-비밀번호는 12~128자입니다. JWT는 HS256으로 서명하며 `sub`, `iss`, `aud`, `iat`, `exp`, `jti`를 검증합니다.
+비밀번호는 8~128자입니다. JWT는 HS256으로 서명하며 `sub`, `iss`, `aud`, `iat`, `exp`, `jti`를 검증합니다.
 로그아웃은 브라우저 쿠키를 삭제하지만 이미 발급된 JWT를 서버에서 조기 폐기하지는 않습니다.
 
 ## 컨테이너

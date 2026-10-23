@@ -157,7 +157,7 @@ public final class Main {
     }
 
     private static String validPassword(String value) {
-        if (value == null || value.length() < 12 || value.length() > 128)
+        if (value == null || value.length() < 8 || value.length() > 128)
             throw new IllegalArgumentException("invalid password");
         return value;
     }
