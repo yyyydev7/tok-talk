@@ -14,11 +14,11 @@ from app.api.rag import _service
 from app.main import create_app
 
 
-def token(secret="test-secret", *, exp=None, iss="simple-auth-server"):
+def token(secret="test-secret", *, exp=None, iss="simple-auth-server", aud="tok-talk-api"):
     def encode(value):
         return base64.urlsafe_b64encode(json.dumps(value).encode()).rstrip(b"=").decode()
 
-    signed = f"{encode({'alg': 'HS256', 'typ': 'JWT'})}.{encode({'iss': iss, 'sub': '1', 'exp': exp or time.time() + 60})}"
+    signed = f"{encode({'alg': 'HS256', 'typ': 'JWT'})}.{encode({'iss': iss, 'aud': [aud], 'sub': '1', 'iat': time.time() - 1, 'exp': exp or time.time() + 60, 'jti': 'test-id'})}"
     signature = base64.urlsafe_b64encode(
         hmac.new(secret.encode(), signed.encode(), hashlib.sha256).digest()
     ).rstrip(b"=").decode()
@@ -66,6 +66,7 @@ class RagApiTest(unittest.TestCase):
         self.assertEqual(self.client.get("/chemicals").status_code, 401)
         self.assertEqual(self.client.get("/chemicals", headers=self.auth(token("wrong"))).status_code, 401)
         self.assertEqual(self.client.get("/chemicals", headers=self.auth(token(exp=1))).status_code, 401)
+        self.assertEqual(self.client.get("/chemicals", headers=self.auth(token(aud="wrong"))).status_code, 401)
         response = self.client.options("/chemicals", headers={
             "Origin": "http://localhost:5174", "Access-Control-Request-Method": "GET"})
         self.assertEqual(response.headers["access-control-allow-origin"], "http://localhost:5174")

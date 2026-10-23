@@ -39,12 +39,22 @@ def verify_access_token(access_token: str | None = Cookie(default=None, alias="A
         now = time.time()
         if payload.get("iss") != os.getenv("JWT_ISSUER", "simple-auth-server"):
             raise ValueError("Invalid issuer")
+        audience = payload.get("aud")
+        expected_audience = os.getenv("JWT_AUDIENCE", "tok-talk-api")
+        if audience != expected_audience and (
+            not isinstance(audience, list) or expected_audience not in audience
+        ):
+            raise ValueError("Invalid audience")
         if not isinstance(payload.get("exp"), (int, float)) or payload["exp"] <= now:
             raise ValueError("Expired token")
+        if not isinstance(payload.get("iat"), (int, float)) or payload["iat"] > now:
+            raise ValueError("Invalid issued-at")
         if "nbf" in payload and (not isinstance(payload["nbf"], (int, float)) or payload["nbf"] > now):
             raise ValueError("Token not active")
         if not isinstance(payload.get("sub"), str) or not payload["sub"]:
             raise ValueError("Missing subject")
+        if not isinstance(payload.get("jti"), str) or not payload["jti"]:
+            raise ValueError("Missing token ID")
     except (ValueError, TypeError, UnicodeError, binascii.Error):
         raise unauthorized from None
     return payload
