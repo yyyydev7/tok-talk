@@ -1,6 +1,6 @@
 # Java 인증 서버
 
-JDK 21과 Gradle Application Plugin으로 실행하는 인증 서비스의 시작 골격입니다. Spring과 외부 인증 라이브러리는 아직 추가하지 않았습니다.
+JDK 21로 실행하는 계정·JWT 인증 서비스입니다. 계정은 MariaDB에 저장하고 비밀번호는 BCrypt로 해시합니다.
 
 ## 실행
 
@@ -24,14 +24,19 @@ PORT=18080 ./gradlew --no-daemon run
 ./build/install/tok-talk-auth/bin/tok-talk-auth --healthcheck
 ```
 
-`PORT`만 현재 코드가 소비하는 환경변수입니다. 생략하면 `8080`을 사용하며 유효 범위는 `1..65535`입니다. DB와 JWT 환경변수는 실제 인증 구현 단계에서 연결합니다.
+실행에는 `JWT_SECRET`(최소 32바이트), `DB_USER`, `DB_PASSWORD`가 필요합니다. `JWT_ISSUER`,
+`JWT_AUDIENCE`, `JWT_ACCESS_TTL_SECONDS`, `COOKIE_SECURE`, DB 접속 변수와 `CORS_ORIGINS`를 설정할 수 있습니다.
 
 ## 현재 확인 가능한 경로
 
 | 요청 | 상태 | 의미 |
 | --- | --- | --- |
 | `GET /health/live` | `200` | HTTP 프로세스가 응답함 |
-| `GET /health` | `503` | 인증 기능 미구현, `auth_ready: false` |
+| `GET /health` | `200` | 인증 기능 준비, `auth_ready: true` |
+| `POST /api/signup` | `302` | 계정 생성 후 `/login` 이동 |
+| `POST /api/login` | `200` | JWT 쿠키 발급 |
+| `GET /api/auth/check` | `200/401` | JWT 쿠키 검증 |
+| `POST /api/logout` | `302` | JWT 쿠키 삭제 |
 | 위 두 경로의 GET 이외 메서드 | `405` | `Allow: GET` 반환 |
 | 그 외 경로 | `404` | 아직 제공하지 않는 API |
 
@@ -40,7 +45,9 @@ curl -i http://localhost:8080/health/live
 curl -i http://localhost:8080/health
 ```
 
-로그인, 회원가입, 로그아웃, JWT 발급·검증, DB 연결, CORS는 아직 구현하지 않았습니다. 정상 응답하는 생존 확인 경로를 로그인 성공이나 통합 준비 완료로 해석하지 마십시오. 현재 테스트 소스는 비어 있으므로 `build` 성공만으로 인증 검증이 완료되지는 않습니다.
+회원가입과 로그인은 `application/x-www-form-urlencoded` 요청을 받습니다. 사용자명은 영문자·숫자·점·밑줄·하이픈 3~64자,
+비밀번호는 8~128자입니다. JWT는 HS256으로 서명하며 `sub`, `iss`, `aud`, `iat`, `exp`, `jti`를 검증합니다.
+로그아웃은 브라우저 쿠키를 삭제하지만 이미 발급된 JWT를 서버에서 조기 폐기하지는 않습니다.
 
 ## 컨테이너
 
@@ -58,20 +65,21 @@ docker build --target release -t tok-talk-auth:release .
 
 ## 다음 구현 범위
 
-공통 API 계약을 먼저 합의한 뒤 계정 저장·비밀번호 해시, 인증 API, JWT 쿠키 속성, CSRF·CORS를 구현합니다. 로그인 완료 후 Vue 화면으로 돌아가는 경로도 함께 확정합니다. RAG 호출의 JWT 검증은 `../rag/`의 책임입니다.
+다음 범위는 로그인 Vue 화면 연결, 요청 제한, 계정 관리, 토큰 조기 폐기 여부와 운영 환경의 HTTPS입니다.
+RAG 보호 라우터는 `../rag/app/security/`의 `CurrentUser` 의존성을 사용합니다.
 
 ## 공통 개발 자료
 
-최상위 폴더를 frontend, backend, datapipeline, rag로 유지하기 위해 아래 자료도 이 폴더에 모았습니다.
+API·DB·협업 자료는 backend에, 배포 설정·도구·기동 검사는 infra에 둡니다.
 경로는 저장소 루트 기준입니다.
 
 - `backend/contracts/`: API 명세와 응답 예시
 - `backend/docs/`: 협업 규칙과 설계 결정
 - `backend/db/`: 마이그레이션·시연 시드
-- `backend/deploy/`: 프록시 설정과 비활성 CI 템플릿
-- `backend/scripts/init_env.py`: 루트 `.env` 또는 `.env.demo` 생성
-- `backend/tests/e2e/`: 서비스 간 기동 검사
+- `infra/`: 프록시 설정과 비활성 CI 템플릿
+- `infra/scripts/init_env.py`: 루트 `.env` 또는 `.env.demo` 생성
+- `infra/tests/e2e/`: 서비스 간 기동 검사
 
 개발·데모 실행 구성은 루트 `compose.dev.yaml`, `compose.demo.yaml`에 있습니다.
-CI 템플릿은 `backend/deploy/github-actions.yml`에 보관하며 현재 자동 실행되지 않습니다.
+CI 템플릿은 `infra/github-actions.yml`에 보관하며 현재 자동 실행되지 않습니다.
 활성화하려면 GitHub가 자동 탐색하는 `.github/workflows/ci.yml`로 옮겨야 합니다.

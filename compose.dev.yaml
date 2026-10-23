@@ -6,8 +6,8 @@ services:
     environment:
       MARIADB_DATABASE: ${DB_NAME:-tok_talk}
       MARIADB_USER: ${DB_USER:-toktalk}
-      MARIADB_PASSWORD: ${DB_PASSWORD:?Run backend/scripts/init_env.py first}
-      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?Run backend/scripts/init_env.py first}
+      MARIADB_PASSWORD: ${DB_PASSWORD:?Run infra/scripts/init_env.py first}
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?Run infra/scripts/init_env.py first}
     ports:
       - "127.0.0.1:${DB_HOST_PORT:-13306}:3306"
     volumes:
@@ -25,33 +25,50 @@ services:
       target: development
     environment:
       PORT: "8080"
-      JWT_SECRET: ${JWT_SECRET:?Run backend/scripts/init_env.py first}
+      JWT_SECRET: ${JWT_SECRET:?Run infra/scripts/init_env.py first}
       JWT_ISSUER: ${JWT_ISSUER:-simple-auth-server}
       DB_HOST: db
       DB_PORT: "3306"
       DB_NAME: ${DB_NAME:-tok_talk}
       DB_USER: ${DB_USER:-toktalk}
-      DB_PASSWORD: ${DB_PASSWORD:?Run backend/scripts/init_env.py first}
+      DB_PASSWORD: ${DB_PASSWORD:?Run infra/scripts/init_env.py first}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5174}
     ports:
       - "127.0.0.1:${AUTH_PORT:-8080}:8080"
+
+  indexer:
+    build:
+      context: ./datapipeline
+    environment:
+      DATA_DIR: /data
+      NIOSH_PDF_PATH: /app/resources/NIOSH.pdf
+      KOSHA_API_KEY: ${KOSHA_API_KEY:-}
+      KOSHA_REFRESH_HOURS: ${KOSHA_REFRESH_HOURS:-24}
+      HF_HOME: /models
+    volumes:
+      - ./datapipeline/data:/data
+      - embedding_cache:/models
 
   rag:
     build:
       context: ./rag
       target: development
+    depends_on:
+      indexer:
+        condition: service_completed_successfully
     environment:
       PORT: "8001"
-      JWT_SECRET: ${JWT_SECRET:?Run backend/scripts/init_env.py first}
+      JWT_SECRET: ${JWT_SECRET:?Run infra/scripts/init_env.py first}
       JWT_ISSUER: ${JWT_ISSUER:-simple-auth-server}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5174}
       DB_HOST: db
       DB_PORT: "3306"
       DB_NAME: ${DB_NAME:-tok_talk}
       DB_USER: ${DB_USER:-toktalk}
-      DB_PASSWORD: ${DB_PASSWORD:?Run backend/scripts/init_env.py first}
+      DB_PASSWORD: ${DB_PASSWORD:?Run infra/scripts/init_env.py first}
       DATA_DIR: /data
-      LLM_API_KEY: ${LLM_API_KEY:-}
+      RAG_INDEX_PATH: ${RAG_INDEX_PATH:-/data/indexes/current}
+      LLM_API_KEY: ${LLM_API_KEY:-${OPENAI_API_KEY:-}}
     volumes:
       - ./rag/app:/app/app
       - ./datapipeline/data:/data:ro
@@ -79,3 +96,4 @@ services:
 
 volumes:
   db_data:
+  embedding_cache:

@@ -21,6 +21,10 @@ services:
     build:
       context: ./backend
       target: release
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
     environment:
       PORT: "8080"
       JWT_SECRET: ${JWT_SECRET:?Provide demo JWT_SECRET}
@@ -31,10 +35,26 @@ services:
       DB_USER: ${DB_USER:-toktalk}
       DB_PASSWORD: ${DB_PASSWORD:?Provide demo DB_PASSWORD}
 
+  indexer:
+    build:
+      context: ./datapipeline
+    environment:
+      DATA_DIR: /data
+      NIOSH_PDF_PATH: /app/resources/NIOSH.pdf
+      KOSHA_API_KEY: ${KOSHA_API_KEY:-}
+      KOSHA_REFRESH_HOURS: ${KOSHA_REFRESH_HOURS:-24}
+      HF_HOME: /models
+    volumes:
+      - ./datapipeline/data:/data
+      - embedding_cache:/models
+
   rag:
     build:
       context: ./rag
       target: release
+    depends_on:
+      indexer:
+        condition: service_completed_successfully
     environment:
       PORT: "8001"
       JWT_SECRET: ${JWT_SECRET:?Provide demo JWT_SECRET}
@@ -45,7 +65,8 @@ services:
       DB_USER: ${DB_USER:-toktalk}
       DB_PASSWORD: ${DB_PASSWORD:?Provide demo DB_PASSWORD}
       DATA_DIR: /data
-      LLM_API_KEY: ${LLM_API_KEY:-}
+      RAG_INDEX_PATH: ${RAG_INDEX_PATH:-/data/indexes/current}
+      LLM_API_KEY: ${LLM_API_KEY:-${OPENAI_API_KEY:-}}
     volumes:
       - ./datapipeline/data:/data:ro
 
@@ -60,7 +81,7 @@ services:
   proxy:
     image: nginx:1.30.6-alpine3.24
     volumes:
-      - ./backend/deploy/proxy/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./infra/proxy/nginx.conf:/etc/nginx/conf.d/default.conf:ro
     ports:
       - "127.0.0.1:${DEMO_HTTP_PORT:-8088}:80"
     healthcheck:
@@ -79,3 +100,4 @@ services:
 
 volumes:
   db_data:
+  embedding_cache:

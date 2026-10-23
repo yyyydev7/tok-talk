@@ -1,17 +1,30 @@
-"""FastAPI 실행 진입점. 업무 API는 계약을 확정한 뒤 연결한다."""
+"""FastAPI entry point for the Vue-facing RAG API."""
 
+import os
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.health import router as health_router
+from app.api.rag import router as rag_router
 
 
 def create_app() -> FastAPI:
     application = FastAPI(
         title="톡talk API",
-        version="0.1.0",
-        description="팀 개발 환경의 시작점. 현재 생존 및 준비 상태 API만 제공한다.",
+        version="0.3.0",
+        description="KOSHA MSDS·NIOSH PDF 기반 물질 검색과 근거 답변 API",
+    )
+    origins = [item.strip() for item in os.getenv("CORS_ORIGINS", "http://localhost:5174").split(",")
+               if item.strip() and item.strip() != "*"]
+    application.add_middleware(
+        CORSMiddleware,
+        allow_origins=origins,
+        allow_credentials=True,
+        allow_methods=["GET", "POST"],
+        allow_headers=["Content-Type"],
     )
     application.include_router(health_router)
+    application.include_router(rag_router)
     return application
 
 
