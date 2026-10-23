@@ -5,6 +5,8 @@ from typing import Literal
 from fastapi import APIRouter, status
 from pydantic import BaseModel
 
+from app.services.rag import index_path_from_environment, validate_index
+
 router = APIRouter(tags=["health"])
 
 
@@ -30,5 +32,10 @@ def liveness() -> Liveness:
     status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
 )
 def readiness() -> Readiness:
-    """인덱스와 재고 DB를 연결하기 전까지 준비되지 않은 상태를 반환한다."""
-    return Readiness()
+    """Report index files separately from the still-unimplemented inventory DB."""
+    try:
+        validate_index(index_path_from_environment())
+        index_ready = True
+    except (OSError, ValueError):
+        index_ready = False
+    return Readiness(index_ready=index_ready)
