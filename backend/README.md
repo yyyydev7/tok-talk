@@ -62,16 +62,16 @@ docker build --target release -t tok-talk-auth:release .
 
 ## 공통 개발 자료
 
-최상위 폴더를 frontend, backend, datapipeline, rag로 유지하기 위해 아래 자료도 이 폴더에 모았습니다.
+API·DB·협업 자료는 backend에, 배포 설정·도구·기동 검사는 infra에 둡니다.
 경로는 저장소 루트 기준입니다.
 
 - `backend/contracts/`: API 명세와 응답 예시
 - `backend/docs/`: 협업 규칙과 설계 결정
 - `backend/db/`: 마이그레이션·시연 시드
-- `backend/deploy/`: 프록시 설정과 비활성 CI 템플릿
-- `backend/scripts/init_env.py`: 루트 `.env` 또는 `.env.demo` 생성
-- `backend/tests/e2e/`: 서비스 간 기동 검사
+- `infra/`: 프록시 설정과 비활성 CI 템플릿
+- `infra/scripts/init_env.py`: 루트 `.env` 또는 `.env.demo` 생성
+- `infra/tests/e2e/`: 서비스 간 기동 검사
 
 개발·데모 실행 구성은 루트 `compose.dev.yaml`, `compose.demo.yaml`에 있습니다.
-CI 템플릿은 `backend/deploy/github-actions.yml`에 보관하며 현재 자동 실행되지 않습니다.
+CI 템플릿은 `infra/github-actions.yml`에 보관하며 현재 자동 실행되지 않습니다.
 활성화하려면 GitHub가 자동 탐색하는 `.github/workflows/ci.yml`로 옮겨야 합니다.

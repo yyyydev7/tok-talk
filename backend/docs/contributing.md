@@ -6,7 +6,7 @@
 | 김대훈 | rag/app/services | 검색·답변·프롬프트·RAG 평가 |
 | 정수민 | backend/src, backend/contracts, backend/db, rag/app/api·security·repositories | 인증·API·재고 조회 계약과 구현 |
 | 강도희 | frontend | 로그인 연동·질문·출처·재고 화면 |
-| 손연우 | backend/deploy, backend/scripts, 루트 compose.*.yaml | 실행 환경·DB 적용 절차·배포 |
+| 손연우 | infra, 루트 compose.*.yaml | 실행 환경·DB 적용 절차·배포 |
 
 폴더는 소유권 경계가 아니라 주 담당 범위입니다. 연관 변경은 함께 검토합니다.
 
@@ -23,7 +23,7 @@
 ## 테스트 위치와 기준
 
 서비스 내부 검사는 각 서비스의 tests 또는 src/test에 둡니다.
-서비스 간 검사는 backend/tests/e2e에 둡니다.
+서비스 간 검사는 infra/tests/e2e에 둡니다.
 외부 LLM을 호출하지 않는 검사를 기본 CI로 사용합니다.
 실제 LLM 평가는 별도 실행하고 모델·프롬프트·인덱스 버전을 결과와 함께 기록합니다.
 
@@ -32,5 +32,5 @@ JWT 오류, 다른 물질 근거 미노출, 복수·미인식, 재고 빈 목록
 재고 장애 중 RAG 화면 유지도 별도로 확인합니다.
 현재 smoke 검사는 개발 골격의 기동만 검사하며 이 기능들의 완료를 보장하지 않습니다.
 
-최상위 폴더 4개를 유지하기 위해 CI 설정은 backend/deploy/github-actions.yml에 템플릿으로 보관합니다.
+CI 설정은 infra/github-actions.yml에 템플릿으로 보관합니다.
 이 위치에서는 자동 실행되지 않습니다. 추후 활성화하려면 .github/workflows/ci.yml로 옮겨야 합니다.

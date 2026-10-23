@@ -1,6 +1,6 @@
 # 톡,talk
 
-최상위 작업 폴더는 frontend, backend, datapipeline, rag 네 개입니다.
+최상위 작업 폴더는 frontend, backend, datapipeline, rag, infra입니다.
 공통 실행 설정과 README, 환경변수 파일은 루트에 둡니다.
 
 | 폴더 | 담당 | 작업 내용 |
@@ -9,9 +9,10 @@
 | backend/ | 정수민 | Java 인증, API 계약, DB 스키마 |
 | datapipeline/ | 이연주 | NIOSH 수집·정제·청킹·임베딩·인덱스 생성 |
 | rag/ | 김대훈 | FastAPI, 물질 식별, 검색·LLM 답변 |
+| infra/ | 손연우 | 프록시·환경 설정·배포 기동 검사 |
 
 정수민은 rag/app/api, security, repositories의 API·JWT·재고 조회 구현도 담당합니다.
-손연우는 루트 Compose 파일과 backend/deploy, backend/scripts의 실행·배포 설정을 담당합니다.
+손연우는 루트 Compose 파일과 infra/의 실행·배포 설정을 담당합니다.
 
 ## 구조
 
@@ -21,15 +22,18 @@
     │  ├─ src/                 Java 인증 서버
     │  ├─ contracts/           API 목표 명세와 예시
     │  ├─ db/                  마이그레이션·시드 위치
-    │  ├─ deploy/              프록시·CI 템플릿
-    │  ├─ scripts/             환경변수 생성
-    │  ├─ tests/e2e/           통합 검사
     │  └─ docs/                설계·협업 문서
     ├─ datapipeline/
     │  ├─ pipeline/            수집·적재 코드 위치
     │  └─ data/                카탈로그·출처·인덱스 산출물
     ├─ rag/
     │  └─ app/                 API·인증 검증·검색·답변·재고 조회
+    ├─ infra/
+    │  ├─ proxy/               Nginx 설정
+    │  ├─ scripts/             환경변수 생성
+    │  ├─ tests/e2e/           배포 기동 검사
+    │  ├─ github-actions.yml   CI 템플릿
+    │  └─ README.md            실행·배포 안내
     ├─ compose.dev.yaml
     ├─ compose.demo.yaml
     └─ .env.example
@@ -44,9 +48,9 @@
 Docker Desktop의 Linux 컨테이너 환경, Docker Compose, Python 3가 필요합니다.
 명령은 이 README가 있는 tok-talk 디렉터리에서 실행합니다.
 
-    python3 backend/scripts/init_env.py
+    python3 infra/scripts/init_env.py
     docker compose --env-file .env -f compose.dev.yaml up --build -d --wait
-    python3 backend/tests/e2e/smoke.py
+    python3 infra/tests/e2e/smoke.py
 
 환경변수 생성기는 기존 .env를 덮어쓰지 않습니다.
 화면은 http://localhost:5174, Java는 8080, FastAPI는 8001, DB 호스트 포트는 13306입니다.
@@ -62,13 +66,13 @@ Docker Desktop의 Linux 컨테이너 환경, Docker Compose, Python 3가 필요�
 
 ## 데모와 검증
 
-    python3 backend/scripts/init_env.py --demo
+    python3 infra/scripts/init_env.py --demo
     docker compose --env-file .env.demo -f compose.demo.yaml up --build -d --wait
-    python3 backend/tests/e2e/proxy_smoke.py
+    python3 infra/tests/e2e/proxy_smoke.py
 
 데모는 로컬 http://localhost:8088에만 노출합니다.
 공개 HTTPS 배포는 아직 구성하지 않았습니다.
-자세한 내용은 [실행·배포 안내](backend/deploy/README.md)를 확인하세요.
+자세한 내용은 [실행·배포 안내](infra/README.md)를 확인하세요.
 
 - frontend: npm ci, npm run build
 - backend: ./gradlew --no-daemon build
@@ -76,7 +80,7 @@ Docker Desktop의 Linux 컨테이너 환경, Docker Compose, Python 3가 필요�
 - rag: uv sync --locked, uv run --locked python -m compileall -q app
 
 서비스별 명령은 해당 폴더에서 실행합니다.
-네 개의 최상위 폴더를 유지하기 위해 GitHub Actions 설정은
-backend/deploy/github-actions.yml에 템플릿으로 보관했습니다.
+GitHub Actions 설정은
+infra/github-actions.yml에 템플릿으로 보관했습니다.
 이 위치에서는 자동 실행되지 않습니다.
 # tok-talk
