@@ -318,7 +318,13 @@ onMounted(() => void checkAuth())
 </script>
 
 <template>
-  <div class="app-shell">
+  <div class="app-shell" :class="{ 'has-auth-background': authState === 'signed-out' || authState === 'unavailable' }">
+    <div v-if="authState === 'signed-out' || authState === 'unavailable'" class="auth-backdrop" aria-hidden="true">
+      <video class="auth-backdrop-video" autoplay muted loop playsinline preload="metadata" poster="/media/lab-pour-poster.jpg">
+        <source src="/media/lab-pour-background.mp4" type="video/mp4" />
+      </video>
+      <div class="auth-backdrop-scrim"></div>
+    </div>
     <header class="topbar">
       <a class="brand" href="/" aria-label="톡talk 홈"><span class="brand-mark">t</span><span>톡,talk</span></a>
       <div class="topbar-right">
