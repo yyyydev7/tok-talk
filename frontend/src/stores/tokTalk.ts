@@ -47,8 +47,22 @@ export type InventoryResponse = {
 type AuthResponse = { ok?: boolean; username?: string; error?: string }
 type AuthState = 'checking' | 'signed-out' | 'signed-in' | 'unavailable'
 
-const authBase = (import.meta.env.VITE_AUTH_BASE_URL ?? 'http://localhost:8080').replace(/\/$/, '')
-const ragBase = (import.meta.env.VITE_RAG_BASE_URL ?? 'http://localhost:8001').replace(/\/$/, '')
+const pageHostname = typeof window === 'undefined' ? 'localhost' : window.location.hostname
+const localHosts = new Set(['localhost', '127.0.0.1'])
+
+function serviceBase(configured: string | undefined, port: number): string {
+  // Keep local API requests on the page's host so the HttpOnly auth cookie is
+  // shared when a developer opens the app as either localhost or 127.0.0.1.
+  if (configured === '') return ''
+  const base = new URL(configured ?? `http://${pageHostname}:${port}`)
+  if (localHosts.has(pageHostname) && localHosts.has(base.hostname)) {
+    base.hostname = pageHostname
+  }
+  return base.toString().replace(/\/$/, '')
+}
+
+const authBase = serviceBase(import.meta.env.VITE_AUTH_BASE_URL, 8080)
+const ragBase = serviceBase(import.meta.env.VITE_RAG_BASE_URL, 8001)
 
 export const authState = ref<AuthState>('checking')
 export const username = ref('')
