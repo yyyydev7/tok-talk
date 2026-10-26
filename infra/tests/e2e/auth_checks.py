@@ -92,7 +92,8 @@ def check_chemicals(client: HttpClient, index_ready: bool) -> None:
     print("PASS rag: authenticated chemical list contains all five expected materials")
 
 
-def check_authentication(base: str, origin: str, *, rag_base: str, index_ready: bool) -> None:
+def check_authentication(base: str, origin: str, *, rag_base: str, index_ready: bool,
+                         require_secure_cookie: bool = False) -> None:
     client = HttpClient(base, origin)
     rag_client = HttpClient(rag_base, origin, cookies=client.cookies)
     username = "smoke_" + secrets.token_hex(12)
@@ -130,6 +131,9 @@ def check_authentication(base: str, origin: str, *, rag_base: str, index_ready: 
     token_cookies = [cookie for cookie in client.cookies if cookie.name == "ACCESS_TOKEN"]
     assert len(token_cookies) == 1 and token_cookies[0].value, "Login cookie missing"
     assert token_cookies[0].has_nonstandard_attr("HttpOnly"), "Login cookie must be HttpOnly"
+    if require_secure_cookie:
+        assert token_cookies[0].secure, "Public HTTPS login cookie must be Secure"
+        assert token_cookies[0].get_nonstandard_attr("SameSite") == "Strict", "SameSite must be Strict"
 
     status, body, _ = client.request("/api/auth/check")
     expect_status(status, 200, "Authenticated request")
@@ -142,6 +146,8 @@ def check_authentication(base: str, origin: str, *, rag_base: str, index_ready: 
     expect_status(status, 302, "Logout")
     assert json.loads(body).get("ok") is True, "Logout did not succeed"
     assert headers.get("Location") == "/login", "Logout redirect target changed"
+    if require_secure_cookie:
+        assert "; Secure" in headers.get("Set-Cookie", ""), "Logout cookie must also be Secure"
     assert not any(cookie.name == "ACCESS_TOKEN" for cookie in client.cookies), "Logout cookie was not cleared"
 
     status, body, _ = client.request("/api/auth/check")

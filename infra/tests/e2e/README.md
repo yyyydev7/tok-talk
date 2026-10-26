@@ -18,6 +18,16 @@
 데모의 기본 주소는 http://localhost:8088입니다. 기본 프로젝트 이름이 개발 구성과
 달라 DB 볼륨과 가입 계정도 분리됩니다. 공개 HTTPS 배포를 검사하는 구성은 아닙니다.
 
+`python3 infra/scripts/public_demo.py start`로 임시 공개했다면 발급된 주소에 다음 검사를 실행합니다.
+
+    python3 infra/tests/e2e/proxy_smoke.py --base https://발급된주소.trycloudflare.com --public
+
+`--public`은 HTTPS 주소, Secure·HttpOnly·SameSite 쿠키, Vue 직접 경로,
+Origin이 없거나 다른 사이트에서 온 POST 차단을 추가 검사합니다.
+공개 검사에서는 `index_ready=true`와 인증된 물질 목록 성공을 필수로 확인합니다.
+임의 가입 계정 한 개가 DB에 남으며 LLM 답변은 생성하지 않습니다.
+공개 모드에서는 백엔드가 공개 주소의 Origin만 허용하므로 로컬 smoke 대신 이 검사를 사용하세요.
+
 두 검사는 공통 인증 검사인 `auth_checks.py`를 사용해 다음 항목을 확인합니다.
 
 - Vue 화면, Java·FastAPI 프로세스 생존, Java 인증 준비 상태

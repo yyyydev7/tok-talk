@@ -59,9 +59,62 @@ RAG `/health`의 503은 재고 DB 미구현을 반영합니다. `index_ready`에
 출력하지 않습니다. 실제 LLM 답변 생성은 별도 화면 검증이 필요합니다.
 자세한 범위와 포트 변경 인자는 [검사 안내](tests/e2e/README.md)를 참고하세요.
 
-이 파일은 공개 HTTPS 배포를 완료한 구성이 아닙니다.
-공개 전에는 TLS 종료, 실제 도메인, 쿠키 Secure/SameSite/Path, CSRF,
-요청 제한, 테이블별 DB 계정과 이미지 digest를 확정하고 구현해야 합니다.
+`compose.demo.yaml` 단독 구성은 로컬 HTTP용입니다.
+발표·테스트용 임시 HTTPS 공개는 아래 절차를 사용하세요.
+상시 운영 서버 배포에는 실제 도메인, 테이블별 DB 계정, 이미지 digest,
+DB 백업·복구와 키 교체 절차를 별도로 준비해야 합니다.
+
+## 발표·테스트용 임시 HTTPS 공개
+
+다른 PC에서 데모 실행을 재현하고 로그인·질문·출처 표시까지 확인한 다음 진행합니다.
+데모 스택이 실행 중인 상태에서 프로젝트 루트에서 실행하세요.
+
+    python3 infra/scripts/public_demo.py start
+
+스크립트가 Cloudflare Quick Tunnel의 `https://...trycloudflare.com` 주소를 출력합니다.
+별도 서버·도메인·Cloudflare 계정이 필요하지 않습니다. 처음 실행하면 공식
+`cloudflare/cloudflared` 이미지를 다운로드합니다. 공유기 포트 개방도 필요하지 않습니다.
+서비스는 이 PC와 Docker가 실행 중인 동안 사용할 수 있고, PC 절전 중에는 접속할 수 없습니다.
+Quick Tunnel은 개발·테스트용이며 상시 운영을 보장하지 않습니다.
+공식 안내: https://developers.cloudflare.com/tunnel/get-started/quick-tunnels/
+
+구조는 외부 브라우저 → Cloudflare HTTPS → tunnel → public-proxy → 기존 서비스입니다.
+`public-proxy`와 `tunnel` 두 컨테이너를 기존 데모 프로젝트에 추가합니다.
+DB·RAG·프런트 컨테이너와 기존 데이터를 그대로 사용하고 백엔드만 HTTPS 인증 설정으로
+재생성합니다. 기존 로그인은 다시 해야 합니다. 공개 중에는 출력된 HTTPS 주소를 사용하세요.
+백엔드가 공개 Origin만 허용하므로 로컬 8088의 로그인·가입은 중지 명령 실행 후 이용합니다.
+
+`compose.public.yaml`은 데모 파일에 덧붙이는 설정입니다. 단독 실행하지 마세요.
+시작 스크립트가 주소 발급 후 CORS와 Secure 쿠키를 적용하고, 전용 Nginx에서 잘못된 Host,
+Origin이 없거나 다른 사이트에서 온 POST 요청을 거절합니다.
+회원가입·로그인은 전체 방문자 합산 분당 30건(추가 burst 10), 질문은 두 경로 합산
+분당 6건(추가 burst 5), 동시 질문 최대 2건으로 제한합니다. 초과하면 HTTP 429가 나옵니다.
+쿠키와 요청 본문은 프록시 로그에 기록하지 않습니다.
+실제 질문은 기존 LLM API 사용량에 포함됩니다.
+
+발급된 주소는 `.env.public`에 보관합니다. 이 파일에는 공개 주소만 있고 Git에서는 제외됩니다.
+실행 중 `start`를 다시 호출하면 기존 터널을 사용합니다. 터널을 종료하고 다시 시작하거나
+Docker/PC를 재시작하면 주소가 바뀔 수 있으므로 `start`를 다시 실행하고 새 주소를 공유하세요.
+
+    python3 infra/scripts/public_demo.py status
+    python3 infra/tests/e2e/proxy_smoke.py --base https://발급된주소.trycloudflare.com --public
+
+공개 검사는 화면·Vue 직접 경로·Origin 차단·Secure 쿠키·가입·로그인·로그아웃과
+준비된 인덱스의 실제 물질 목록을 확인합니다. 임의 계정 한 개가 DB에 남으며 실제 LLM
+질문은 별도 화면 검증이 필요합니다. 휴대폰 Wi-Fi를 끄고 모바일 데이터에서도 확인하세요.
+
+공개를 끝내려면 다음 명령을 실행합니다.
+
+    python3 infra/scripts/public_demo.py stop
+
+터널을 먼저 닫고 추가 컨테이너만 제거한 뒤 백엔드와 기존 프록시를 로컬 설정으로
+복구합니다. DB 볼륨과 인덱스는 보존하며 로컬 `http://localhost:8088`을 다시 사용할 수 있습니다.
+전체 데모를 정리할 때도 데이터가 필요하면 `down --volumes`를 사용하지 마세요.
+
+주소가 발급되지 않으면 Docker 인터넷 연결과 학교·회사망의 외부 TCP 7844 허용 여부를
+확인하세요. 이 구성은 터널 연결에 HTTP/2를 사용합니다. 시작 도중 실패하면 스크립트가
+터널을 닫고 로컬 데모 복구를 시도합니다. 강제 종료 등으로 남은 컨테이너도 `stop`으로 정리합니다.
+키·JWT·DB 비밀번호가 포함된 Compose `config` 전체 출력이나 `.env.demo`를 공유하지 마세요.
 
 ## DB 데이터 유지
 

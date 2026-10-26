@@ -87,7 +87,37 @@ def _matches(text: str, loaded: set[str]) -> list[str]:
             for term in terms
         ):
             found.append(material_id)
+    if found:
+        return found
+
+    # Only try Korean name typos after exact names, aliases, and CAS numbers fail.
+    # A typo in a CAS number must never silently select another chemical.
+    korean_words = re.findall(r"[가-힣]+", text)
+    particles = {"", "은", "는", "이", "가", "을", "를", "의", "에", "에서",
+                 "과", "와", "도", "만", "로", "으로", "부터", "까지", "에는"}
+    for material_id in MATERIALS:
+        if material_id not in loaded:
+            continue
+        name = MATERIALS[material_id][0]
+        if any(
+            _one_edit(word[:length], name) and word[length:] in particles
+            for word in korean_words
+            for length in (len(name) - 1, len(name), len(name) + 1)
+            if length >= 2 and length <= len(word)
+        ):
+            found.append(material_id)
     return found
+
+
+def _one_edit(left: str, right: str) -> bool:
+    """True for exactly one substituted, inserted, or deleted character."""
+    if abs(len(left) - len(right)) > 1:
+        return False
+    if len(left) == len(right):
+        return sum(a != b for a, b in zip(left, right)) == 1
+    if len(left) > len(right):
+        left, right = right, left
+    return any(left == right[:i] + right[i + 1:] for i in range(len(right)))
 
 
 def _unresolved(status: str, matches: list[str]) -> dict:

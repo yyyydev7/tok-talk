@@ -80,7 +80,11 @@ RAG 컨테이너의 `/data/indexes/current`입니다.
 
 데모는 로컬 http://localhost:8088에만 노출합니다.
 기본 프로젝트 이름이 개발 구성과 달라 DB 볼륨과 가입 계정도 분리됩니다.
-공개 HTTPS 배포는 아직 구성하지 않았습니다.
+발표·테스트용 임시 HTTPS 공개는 데모 실행 후
+`python3 infra/scripts/public_demo.py start`를 사용합니다.
+이 PC와 Docker를 켜 둔 동안 외부에서 접속할 수 있습니다.
+공개 종료 및 로컬 복구는 `python3 infra/scripts/public_demo.py stop`입니다.
+상시 운영 서버 배포는 별도 구성이 필요합니다.
 자세한 내용은 [실행·배포 안내](infra/README.md)를 확인하세요.
 
 두 검사는 실제 가입·중복 가입 거절·잘못된 비밀번호 거절·로그인·JWT 쿠키·로그아웃과
