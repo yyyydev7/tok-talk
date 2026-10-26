@@ -21,15 +21,22 @@ def main() -> None:
     assert status == 200 and '<div id="app">' in body, "Release Vue page unavailable"
     print("PASS frontend: release Vue entry page available through proxy")
     if args.public:
-        for path in ("/login", "/services", "/materials"):
+        for path in ("/login", "/ask", "/upgrade", "/materials"):
             status, body, _ = client.request(path)
             assert status == 200 and '<div id="app">' in body, f"SPA route unavailable: {path}"
         for origin in (None, "https://untrusted.invalid"):
             rejected = HttpClient(base, origin)
-            for path in ("/api/login", "/rag-query", "/rag-query/auto"):
+            for path in ("/api/login", "/chat-query", "/rag-query", "/rag-query/auto",
+                         "/speech-to-text", "/text-to-speech"):
                 status, _, _ = rejected.request(path, "POST")
                 expect_status(status, 403, f"Public Origin guard: {path}")
+        anonymous = HttpClient(base, origin_of(base))
+        for path in ("/chat-query", "/speech-to-text", "/text-to-speech"):
+            status, body, _ = anonymous.request(path, "POST")
+            expect_status(status, 401, f"Anonymous AI request: {path}")
+            assert json.loads(body).get("detail") == "UNAUTHORIZED", f"AI auth error missing: {path}"
         print("PASS public gateway: SPA routes work; missing and foreign POST Origins rejected")
+        print("PASS public AI routes: chat, STT and TTS reach FastAPI and require authentication")
     status, body, _ = client.request("/health/live")
     assert status == 200 and json.loads(body).get("status") == "alive", "RAG liveness route failed"
     status, body, _ = client.request("/health")

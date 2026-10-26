@@ -78,6 +78,39 @@ DB 백업·복구와 키 교체 절차를 별도로 준비해야 합니다.
 Quick Tunnel은 개발·테스트용이며 상시 운영을 보장하지 않습니다.
 공식 안내: https://developers.cloudflare.com/tunnel/get-started/quick-tunnels/
 
+### 연결 방식과 선택 이유
+
+이 구성은 **Cloudflare Quick Tunnel로 로컬 Docker 데모에 임시 HTTPS 입구를 추가**합니다.
+서비스와 DB는 계속 이 PC에서 실행되고, `cloudflared` 컨테이너가 Cloudflare로 나가는
+연결을 만듭니다. 외부 브라우저의 요청은 이 연결을 거쳐 공개 전용 Nginx로 들어옵니다.
+공유기의 포트 포워딩이나 앱 서버의 공인 IP 노출을 추가하지 않습니다.
+
+선택 기준은 발표·단기 테스트에 필요한 다음 조건입니다.
+
+- Cloudflare 계정과 도메인 등록 없이 임시 주소를 발급할 수 있습니다.
+- HTTPS 주소를 제공해 외부 브라우저에서 마이크 녹음과 Secure 쿠키를 사용할 수 있습니다.
+- 기존 Docker 서비스·DB·인덱스를 재사용해 별도 서버로 옮기는 작업을 줄입니다.
+- 시작·상태 확인·중지 명령을 스크립트 하나로 반복할 수 있습니다.
+
+PC·Docker·터널이 실행 중이어야 접속할 수 있고, 새 터널의 주소는 달라집니다.
+Quick Tunnel에는 가용성 보장이 없으므로 고정 주소와 상시 운영이 필요하면 별도
+호스팅·고정 도메인·운영용 터널 구성을 설계합니다.
+
+프로젝트 루트에서 직접 실행하는 명령은 다음과 같습니다.
+
+    python3 infra/scripts/public_demo.py start
+    python3 infra/scripts/public_demo.py status
+    python3 infra/scripts/public_demo.py stop
+
+`start`는 데모 실행 상태 확인 → 공개 Nginx 준비 → `cloudflared` 실행 → 랜덤 주소
+추출 → `.env.public` 저장 → 백엔드의 공개 Origin·Secure 쿠키 적용 → HTTPS 응답 확인을
+순서대로 수행합니다. 실제 컨테이너 안의 터널 명령은 다음과 같습니다.
+
+    cloudflared tunnel --no-autoupdate --protocol http2 --url http://public-proxy:80
+
+`public-proxy:80`은 Docker 내부 주소입니다. Cloudflare HTTPS에서 터널을 통해 이 Nginx로
+요청이 전달되고, 경로에 따라 Vue 화면·Java 인증·FastAPI 질문/음성 서비스로 나뉩니다.
+
 구조는 외부 브라우저 → Cloudflare HTTPS → tunnel → public-proxy → 기존 서비스입니다.
 `public-proxy`와 `tunnel` 두 컨테이너를 기존 데모 프로젝트에 추가합니다.
 DB·RAG·프런트 컨테이너와 기존 데이터를 그대로 사용하고 백엔드만 HTTPS 인증 설정으로
@@ -87,8 +120,10 @@ DB·RAG·프런트 컨테이너와 기존 데이터를 그대로 사용하고 �
 `compose.public.yaml`은 데모 파일에 덧붙이는 설정입니다. 단독 실행하지 마세요.
 시작 스크립트가 주소 발급 후 CORS와 Secure 쿠키를 적용하고, 전용 Nginx에서 잘못된 Host,
 Origin이 없거나 다른 사이트에서 온 POST 요청을 거절합니다.
-회원가입·로그인은 전체 방문자 합산 분당 30건(추가 burst 10), 질문은 두 경로 합산
-분당 6건(추가 burst 5), 동시 질문 최대 2건으로 제한합니다. 초과하면 HTTP 429가 나옵니다.
+회원가입·로그인은 전체 방문자 합산 분당 30건(추가 burst 10), 일반 질문과 RAG 질문은
+세 경로 합산 분당 6건(추가 burst 5), 동시 질문 최대 2건으로 제한합니다.
+STT·TTS는 두 경로 합산 분당 12건(추가 burst 5), 동시 음성 요청 최대 2건입니다.
+초과하면 HTTP 429가 나옵니다. 음성 업로드는 실제 파일 기준 10 MiB까지 허용합니다.
 쿠키와 요청 본문은 프록시 로그에 기록하지 않습니다.
 실제 질문은 기존 LLM API 사용량에 포함됩니다.
 
