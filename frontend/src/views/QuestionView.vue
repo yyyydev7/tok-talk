@@ -131,8 +131,7 @@ async function toggleRecording() {
       transcribing.value = true
       try {
         question.value = await transcribeAudio(audio)
-        voiceStatus.value = tr('질문을 확인했습니다. 답변을 만드는 중…')
-        if (!await ask(true)) voiceStatus.value = ''
+        voiceStatus.value = tr('음성을 질문으로 입력했습니다. 내용을 확인한 뒤 질문하기를 눌러 주세요.', 'Voice input is ready. Review it, then press Ask.')
       } catch (error) {
         pageError.value = error instanceof Error ? error.message : '음성을 변환하지 못했습니다.'
         voiceStatus.value = ''

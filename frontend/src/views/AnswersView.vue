@@ -49,7 +49,9 @@ async function toggleSpeech() {
     await audioElement.value?.play()
     speechPlaying.value = true
   } catch (error) {
-    speechError.value = error instanceof Error ? error.message : '답변 음성을 재생하지 못했습니다.'
+    speechError.value = error instanceof Error
+      ? `${error.message} 자동 재생이 차단됐다면 답변 듣기를 다시 눌러 주세요.`
+      : '답변 음성을 재생하지 못했습니다. 답변 듣기를 다시 눌러 주세요.'
   } finally {
     speechBusy.value = false
   }
