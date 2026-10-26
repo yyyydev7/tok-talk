@@ -1,0 +1,249 @@
+{
+  "before": {
+    "path": "/Users/daehun/Desktop/mini_team_project/tok-talk/datapipeline/data/indexes/build-1792740406-5e660031",
+    "audit": {
+      "chunks": 715,
+      "by_source": {
+        "KOSHA": 445,
+        "NIOSH PDF": 270
+      },
+      "not_available": 107,
+      "header_only": 66,
+      "no_cas_in_text": 152,
+      "reference_chunks": 215
+    },
+    "questions": [
+      {
+        "title": "아세톤 노출 경로",
+        "expected_section": "Exposure Routes, Symptoms, Target Organs",
+        "first_rank": 1,
+        "sections": [
+          "Exposure Routes, Symptoms, Target Organs",
+          "유해성·위험성",
+          "응급조치요령",
+          "Personal Protection/Sanitation",
+          "노출방지 및 개인보호구"
+        ]
+      },
+      {
+        "title": "아세톤 약어 Con",
+        "expected_section": "Exposure and symptoms abbreviations",
+        "first_rank": 1,
+        "sections": [
+          "Exposure and symptoms abbreviations",
+          "Exposure and symptoms abbreviations",
+          "Exposure and symptoms abbreviations",
+          "Exposure and symptoms abbreviations",
+          "Exposure and symptoms abbreviations"
+        ]
+      },
+      {
+        "title": "아세톤 보관",
+        "expected_section": "취급 및 저장방법",
+        "first_rank": 2,
+        "sections": [
+          "유해성·위험성",
+          "취급 및 저장방법",
+          "취급 및 저장방법",
+          "유해성·위험성",
+          "노출방지 및 개인보호구"
+        ]
+      },
+      {
+        "title": "메탄올 보호구",
+        "expected_section": "노출방지 및 개인보호구",
+        "first_rank": 1,
+        "sections": [
+          "노출방지 및 개인보호구",
+          "노출방지 및 개인보호구",
+          "노출방지 및 개인보호구",
+          "폭발·화재시 대처방법",
+          "누출사고시 대처방법"
+        ]
+      },
+      {
+        "title": "메탄올 응급조치",
+        "expected_section": "응급조치요령",
+        "first_rank": 1,
+        "sections": [
+          "응급조치요령",
+          "응급조치요령",
+          "Personal Protection/Sanitation",
+          "노출방지 및 개인보호구",
+          "First Aid"
+        ]
+      },
+      {
+        "title": "톨루엔 건강 영향",
+        "expected_section": "독성에 관한 정보",
+        "first_rank": 1,
+        "sections": [
+          "독성에 관한 정보",
+          "Exposure Routes, Symptoms, Target Organs",
+          "독성에 관한 정보",
+          "그 밖의 참고사항",
+          "독성에 관한 정보"
+        ]
+      },
+      {
+        "title": "톨루엔 노출 감소",
+        "expected_section": "노출방지 및 개인보호구",
+        "first_rank": 1,
+        "sections": [
+          "노출방지 및 개인보호구",
+          "노출방지 및 개인보호구",
+          "취급 및 저장방법",
+          "유해성·위험성",
+          "독성에 관한 정보"
+        ]
+      },
+      {
+        "title": "에탄올 소화제",
+        "expected_section": "폭발·화재시 대처방법",
+        "first_rank": 1,
+        "sections": [
+          "폭발·화재시 대처방법",
+          "폭발·화재시 대처방법",
+          "누출사고시 대처방법",
+          "누출사고시 대처방법",
+          "폭발·화재시 대처방법"
+        ]
+      },
+      {
+        "title": "아세트산 피부 증상",
+        "expected_section": "유해성·위험성",
+        "first_rank": 3,
+        "sections": [
+          "Exposure Routes, Symptoms, Target Organs",
+          "응급조치요령",
+          "유해성·위험성",
+          "그 밖의 참고사항",
+          "독성에 관한 정보"
+        ]
+      }
+    ]
+  },
+  "after": {
+    "path": "/Users/daehun/Desktop/mini_team_project/tok-talk/datapipeline/data/indexes/chunking_v2_candidate_20261026",
+    "audit": {
+      "chunks": 553,
+      "by_source": {
+        "KOSHA": 338,
+        "NIOSH PDF": 215
+      },
+      "not_available": 0,
+      "header_only": 0,
+      "no_cas_in_text": 0,
+      "reference_chunks": 160
+    },
+    "questions": [
+      {
+        "title": "아세톤 노출 경로",
+        "expected_section": "Exposure Routes, Symptoms, Target Organs",
+        "first_rank": 1,
+        "sections": [
+          "Exposure Routes, Symptoms, Target Organs",
+          "유해성·위험성",
+          "응급조치요령",
+          "Personal Protection/Sanitation",
+          "노출방지 및 개인보호구"
+        ]
+      },
+      {
+        "title": "아세톤 약어 Con",
+        "expected_section": "Exposure and symptoms abbreviations",
+        "first_rank": 1,
+        "sections": [
+          "Exposure and symptoms abbreviations",
+          "Exposure and symptoms abbreviations",
+          "Exposure and symptoms abbreviations",
+          "Exposure and symptoms abbreviations"
+        ]
+      },
+      {
+        "title": "아세톤 보관",
+        "expected_section": "취급 및 저장방법",
+        "first_rank": 2,
+        "sections": [
+          "유해성·위험성",
+          "취급 및 저장방법",
+          "취급 및 저장방법",
+          "유해성·위험성",
+          "노출방지 및 개인보호구"
+        ]
+      },
+      {
+        "title": "메탄올 보호구",
+        "expected_section": "노출방지 및 개인보호구",
+        "first_rank": 1,
+        "sections": [
+          "노출방지 및 개인보호구",
+          "노출방지 및 개인보호구",
+          "노출방지 및 개인보호구",
+          "폭발·화재시 대처방법",
+          "누출사고시 대처방법"
+        ]
+      },
+      {
+        "title": "메탄올 응급조치",
+        "expected_section": "응급조치요령",
+        "first_rank": 1,
+        "sections": [
+          "응급조치요령",
+          "응급조치요령",
+          "Personal Protection/Sanitation",
+          "노출방지 및 개인보호구",
+          "First Aid"
+        ]
+      },
+      {
+        "title": "톨루엔 건강 영향",
+        "expected_section": "독성에 관한 정보",
+        "first_rank": 1,
+        "sections": [
+          "독성에 관한 정보",
+          "Exposure Routes, Symptoms, Target Organs",
+          "독성에 관한 정보",
+          "그 밖의 참고사항",
+          "독성에 관한 정보"
+        ]
+      },
+      {
+        "title": "톨루엔 노출 감소",
+        "expected_section": "노출방지 및 개인보호구",
+        "first_rank": 1,
+        "sections": [
+          "노출방지 및 개인보호구",
+          "노출방지 및 개인보호구",
+          "취급 및 저장방법",
+          "유해성·위험성",
+          "독성에 관한 정보"
+        ]
+      },
+      {
+        "title": "에탄올 소화제",
+        "expected_section": "폭발·화재시 대처방법",
+        "first_rank": 1,
+        "sections": [
+          "폭발·화재시 대처방법",
+          "폭발·화재시 대처방법",
+          "누출사고시 대처방법",
+          "누출사고시 대처방법",
+          "폭발·화재시 대처방법"
+        ]
+      },
+      {
+        "title": "아세트산 피부 증상",
+        "expected_section": "유해성·위험성",
+        "first_rank": 3,
+        "sections": [
+          "Exposure Routes, Symptoms, Target Organs",
+          "응급조치요령",
+          "유해성·위험성",
+          "그 밖의 참고사항",
+          "독성에 관한 정보"
+        ]
+      }
+    ]
+  }
+}

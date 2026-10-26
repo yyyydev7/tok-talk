@@ -153,33 +153,52 @@ def load_index(path):
 
 
 def index(args):
-    from langchain_text_splitters import RecursiveCharacterTextSplitter
     from langchain_community.vectorstores import FAISS
     from langchain_community.vectorstores.utils import DistanceStrategy
     data = json.loads(Path(args.input).read_text(encoding="utf-8"))
-    texts, metadata = [], []
-    for item in data["records"]:
-        if item.get("source") == "CDC/NIOSH":
-            raise ValueError("기존 NIOSH 웹 자료가 포함되어 있습니다. PDF 자료로 다시 수집하세요.")
-        if item.get("source") == "NIOSH PDF" and args.kosha_only:
-            continue
-        if not item.get("content", "").strip():
-            continue
-        texts.append(f"물질명: {item['chemical_name']}\nCAS: {item['cas_no']}\n출처: {item['source']}\n항목: {item['section']}\n세부항목: {item.get('label', '')}\n자료 상태: {item.get('availability', 'available')}\n내용: {item['content']}")
-        metadata.append({k: v for k, v in item.items() if k != "content" and v is not None})
-    if not texts:
+    docs = chunk_records(data, kosha_only=args.kosha_only)
+    if not docs:
         raise ValueError("적재할 문서가 없습니다.")
     path = Path(args.output)
     if path.exists():
         raise ValueError(f"기존 인덱스 보존을 위해 중단: {path}")
-    splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
-    docs = splitter.create_documents(texts, metadatas=metadata)
     store = FAISS.from_documents(docs, embeddings(),
                                  distance_strategy=DistanceStrategy.MAX_INNER_PRODUCT)
     store.save_local(str(path))
     (path / "config.json").write_text(json.dumps(INDEX_CONFIG, ensure_ascii=False, indent=2), encoding="utf-8")
     sources = sorted({doc.metadata.get("source", "알 수 없음") for doc in docs})
     print(f"{len(docs)}개 청크 저장: {path} / 출처: {', '.join(sources)}")
+
+
+def chunk_records(data, *, kosha_only=False):
+    """Keep one source record per topic and repeat its identity on every split."""
+    from langchain_core.documents import Document
+    from langchain_text_splitters import RecursiveCharacterTextSplitter
+
+    docs = []
+    for item in data["records"]:
+        if item.get("source") == "CDC/NIOSH":
+            raise ValueError("기존 NIOSH 웹 자료가 포함되어 있습니다. PDF 자료로 다시 수집하세요.")
+        if item.get("source") == "NIOSH PDF" and kosha_only:
+            continue
+        if not item.get("content", "").strip() or item.get("availability") == "not_available":
+            continue
+        header = (f"물질명: {item['chemical_name']}\nCAS: {item['cas_no']}\n"
+                  f"출처: {item['source']}\n항목: {item['section']}\n"
+                  f"세부항목: {item.get('label', '')}\n"
+                  f"자료 상태: {item.get('availability', 'available')}\n내용: ")
+        budget = 1000 - len(header)
+        if budget <= 100:
+            raise ValueError("청크 머리글이 너무 길어 본문을 보존할 수 없습니다.")
+        splitter = RecursiveCharacterTextSplitter(
+            chunk_size=budget, chunk_overlap=min(100, budget // 4),
+            separators=["\n\n", "\n", "|", ". ", "; ", " ", ""],
+        )
+        metadata = {k: v for k, v in item.items() if k != "content" and v is not None}
+        for part in splitter.split_text(item["content"].strip()):
+            if part.strip():
+                docs.append(Document(page_content=header + part, metadata=metadata.copy()))
+    return docs
 
 
 def is_incompatibility_question(question):

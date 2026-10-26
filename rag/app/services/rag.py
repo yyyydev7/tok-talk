@@ -166,8 +166,16 @@ class RagService:
         intents = _question_intents(question)
         missing: list[str] = []
         if len(intents) < 2:
+            # Shared NIOSH code tables are supporting references, not primary
+            # evidence for an ordinary safety question. The dedicated glossary
+            # lookup below still fetches a code definition when it is needed.
+            def primary_record(meta: dict) -> bool:
+                return (meta.get("cas_no") == cas
+                        and meta.get("record_type") != "reference"
+                        and meta.get("availability", "available") == "available")
+
             hits = self.store.similarity_search_with_score(
-                question, k=top_k, fetch_k=10000, filter={"cas_no": cas},
+                question, k=top_k, fetch_k=10000, filter=primary_record,
             )
         else:
             # Search each requested section separately, then interleave results.

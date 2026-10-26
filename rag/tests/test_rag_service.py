@@ -61,7 +61,9 @@ class RagServiceTest(unittest.TestCase):
     def test_cas_is_restricted_and_supported_sources_are_cited(self):
         store = FakeStore([hit(), hit("67-56-1"), hit(source="KOSHA")])
         result = RagService(store, FakeLlm("흡입 노출 가능 [근거 1]")).answer("acetone", "노출 경로는?")
-        self.assertEqual(store.filters[0], {"cas_no": "67-64-1"})
+        self.assertTrue(store.filters[0]({"cas_no": "67-64-1", "source": "KOSHA"}))
+        self.assertFalse(store.filters[0]({"cas_no": "67-56-1", "source": "KOSHA"}))
+        self.assertFalse(store.filters[0]({"cas_no": "67-64-1", "record_type": "reference"}))
         self.assertFalse(result["needs_review"])
         self.assertEqual(len(result["sources"]), 1)
         self.assertEqual(result["sources"][0]["checked_at"], "2026-10-23")
@@ -139,6 +141,16 @@ class RagServiceTest(unittest.TestCase):
             "acetone", "개인보호구와 응급조치 방법은?", top_k=5)
         self.assertEqual({item.source["section"] for item in evidence},
                          {"노출방지 및 개인보호구", "응급조치요령"})
+
+    def test_general_search_skips_reference_and_unavailable_records(self):
+        reference = glossary_hit()
+        reference[0].metadata["record_type"] = "reference"
+        unavailable = section_hit("독성에 관한 정보", "기타")
+        unavailable[0].metadata["availability"] = "not_available"
+        storage = section_hit("취급 및 저장방법", "안전한 저장방법")
+        evidence = RagService(FilteringStore([reference, unavailable, storage])).search(
+            "acetone", "보관 방법은?", top_k=3)
+        self.assertEqual([item.source["section"] for item in evidence], ["취급 및 저장방법"])
 
     def test_missing_compound_topic_blocks_llm(self):
         store = FilteringStore([section_hit("취급 및 저장방법", "안전한 저장방법")])
