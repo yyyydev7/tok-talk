@@ -6,6 +6,42 @@ from . import pipeline
 
 
 class PipelineTest(unittest.IsolatedAsyncioTestCase):
+    def test_chunking_preserves_record_context_and_skips_unavailable(self):
+        records = [
+            {"chemical_name": "아세톤", "cas_no": "67-64-1", "source": "KOSHA",
+             "section": "취급 및 저장방법", "label": "안전한 저장방법",
+             "availability": "available", "content": "환기가 잘 되는 곳에 보관하시오."},
+            {"chemical_name": "아세톤", "cas_no": "67-64-1", "source": "KOSHA",
+             "section": "독성에 관한 정보", "label": "기타", "availability": "not_available",
+             "content": "자료없음"},
+            {"chemical_name": "아세톤", "cas_no": "67-64-1", "source": "NIOSH PDF",
+             "section": "Exposure and symptoms abbreviations", "pdf_page": 26,
+             "content": "code description " * 120 + "con Skin and/or eye contact"},
+        ]
+        chunks = pipeline.chunk_records({"records": records})
+        self.assertTrue(any(doc.metadata["label"] == "안전한 저장방법" for doc in chunks))
+        self.assertFalse(any(doc.metadata.get("availability") == "not_available" for doc in chunks))
+        for doc in chunks:
+            self.assertIn("CAS: 67-64-1", doc.page_content)
+            self.assertIn("내용: ", doc.page_content)
+            self.assertGreater(len(doc.page_content.split("내용: ", 1)[1]), 0)
+            self.assertLessEqual(len(doc.page_content), 1000)
+        self.assertTrue(any("con Skin and/or eye contact" in doc.page_content for doc in chunks))
+
+    def test_supported_niosh_abbreviations_keep_code_with_definition(self):
+        from .niosh_codes import glossary
+        from .niosh_pdf import open_pdf
+
+        records = pipeline.collect_pdf(open_pdf(pipeline.PDF_PATH), "67-64-1")
+        docs = pipeline.chunk_records({"records": records})
+        pages = [doc.page_content.casefold() for doc in docs
+                 if doc.metadata["section"] == "Exposure and symptoms abbreviations"]
+        abbreviations = glossary(pipeline.PDF_PATH)[1]
+        self.assertGreater(len(abbreviations), 20)
+        for code, (meaning, _page) in abbreviations.items():
+            with self.subTest(code=code):
+                self.assertTrue(any(f"{code} {meaning}".casefold() in text for text in pages))
+
     def test_pdf_extracts_five_materials_without_neighboring_tables(self):
         from .niosh_pdf import extract_material, open_pdf, reference_pages
         reader = open_pdf(pipeline.PDF_PATH)

@@ -215,6 +215,117 @@ paths:
           $ref: '#/components/responses/InvalidRequest'
         '503':
           $ref: '#/components/responses/Unavailable'
+  /speech-to-text:
+    post:
+      operationId: transcribeSpeech
+      x-implementation-status: implemented
+      summary: 녹음된 질문을 텍스트로 변환
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: 변환된 질문 텍스트
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [text]
+                properties:
+                  text:
+                    type: string
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '413':
+          description: 허용 크기를 초과한 녹음
+        '415':
+          description: 지원하지 않는 파일 형식
+        '502':
+          description: 외부 음성 서비스 처리 실패
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /chat-query:
+    post:
+      operationId: queryGeneralAssistant
+      x-implementation-status: implemented
+      summary: 별도 검색 인덱스 없이 일반 LLM에 질문
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [question]
+              properties:
+                question:
+                  type: string
+                  minLength: 1
+                  maxLength: 4000
+      responses:
+        '200':
+          description: 음성 재생에 사용할 일반 AI 답변
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Answer'
+                  - type: object
+                    properties:
+                      answer_mode:
+                        type: string
+                        const: general
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/InvalidRequest'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /text-to-speech:
+    post:
+      operationId: synthesizeSpeech
+      x-implementation-status: implemented
+      summary: RAG 답변 텍스트를 음성으로 변환
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [text]
+              properties:
+                text:
+                  type: string
+                  minLength: 1
+                  maxLength: 5000
+      responses:
+        '200':
+          description: MP3 음성
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            audio/mpeg:
+              schema:
+                type: string
+                format: binary
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/InvalidRequest'
+        '502':
+          description: 외부 음성 서비스 처리 실패
+        '503':
+          $ref: '#/components/responses/Unavailable'
   /health:
     get:
       operationId: getHealth
