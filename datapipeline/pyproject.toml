@@ -4,7 +4,18 @@ version = "0.1.0"
 description = "톡talk NIOSH 데이터 수집 및 인덱스 생성 작업 영역"
 readme = "README.md"
 requires-python = ">=3.11,<3.12"
-dependencies = []
+dependencies = [
+  "aiohttp>=3.9",
+  "python-dotenv>=1.0",
+  "beautifulsoup4>=4.12",
+  "langchain-text-splitters",
+  "langchain-community",
+  "langchain-openai",
+  "langchain-huggingface",
+  "sentence-transformers",
+  "faiss-cpu",
+  "pypdf",
+]
 
 [tool.uv]
 package = false

@@ -36,10 +36,26 @@ services:
     ports:
       - "127.0.0.1:${AUTH_PORT:-8080}:8080"
 
+  indexer:
+    build:
+      context: ./datapipeline
+    environment:
+      DATA_DIR: /data
+      NIOSH_PDF_PATH: /app/resources/NIOSH.pdf
+      KOSHA_API_KEY: ${KOSHA_API_KEY:-}
+      KOSHA_REFRESH_HOURS: ${KOSHA_REFRESH_HOURS:-24}
+      HF_HOME: /models
+    volumes:
+      - ./datapipeline/data:/data
+      - embedding_cache:/models
+
   rag:
     build:
       context: ./rag
       target: development
+    depends_on:
+      indexer:
+        condition: service_completed_successfully
     environment:
       PORT: "8001"
       JWT_SECRET: ${JWT_SECRET:?Run infra/scripts/init_env.py first}
@@ -51,7 +67,18 @@ services:
       DB_USER: ${DB_USER:-toktalk}
       DB_PASSWORD: ${DB_PASSWORD:?Run infra/scripts/init_env.py first}
       DATA_DIR: /data
-      LLM_API_KEY: ${LLM_API_KEY:-}
+      RAG_INDEX_PATH: ${RAG_INDEX_PATH:-/data/indexes/current}
+      LLM_API_KEY: ${LLM_API_KEY:-${OPENAI_API_KEY:-}}
+      VOICE_CHAT_MODEL: ${VOICE_CHAT_MODEL:-gpt-4o-mini}
+      ELEVENLABS_API_KEY: ${ELEVENLABS_API_KEY:-}
+      ELEVENLABS_VOICE_ID: ${ELEVENLABS_VOICE_ID:-}
+      ELEVENLABS_TTS_MODEL: ${ELEVENLABS_TTS_MODEL:-eleven_multilingual_v2}
+      ELEVENLABS_STT_MODEL: ${ELEVENLABS_STT_MODEL:-scribe_v2}
+      ELEVENLABS_STT_LANGUAGE: ${ELEVENLABS_STT_LANGUAGE:-kor}
+      ELEVENLABS_OUTPUT_FORMAT: ${ELEVENLABS_OUTPUT_FORMAT:-mp3_44100_128}
+      ELEVENLABS_VOICE_SPEED: ${ELEVENLABS_VOICE_SPEED:-1.0}
+      ELEVENLABS_TIMEOUT_SECONDS: ${ELEVENLABS_TIMEOUT_SECONDS:-60}
+      ELEVENLABS_MAX_AUDIO_BYTES: ${ELEVENLABS_MAX_AUDIO_BYTES:-10485760}
     volumes:
       - ./rag/app:/app/app
       - ./datapipeline/data:/data:ro
@@ -79,3 +106,4 @@ services:
 
 volumes:
   db_data:
+  embedding_cache:

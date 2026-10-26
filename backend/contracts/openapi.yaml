@@ -16,7 +16,7 @@ paths:
       - url: http://localhost:8080
     post:
       operationId: signup
-      x-implementation-status: planned
+      x-implementation-status: implemented
       security: []
       summary: 회원가입
       requestBody:
@@ -33,7 +33,9 @@ paths:
               schema:
                 type: string
         '400':
-          description: 필수값 누락 또는 중복 사용자명, 텍스트 응답
+          description: 필수값 누락 또는 잘못된 사용자명·비밀번호 형식
+        '409':
+          description: 중복 사용자명
         '500':
           description: 서버 또는 DB 오류
   /api/login:
@@ -41,7 +43,7 @@ paths:
       - url: http://localhost:8080
     post:
       operationId: login
-      x-implementation-status: planned
+      x-implementation-status: implemented
       security: []
       summary: 로그인과 HttpOnly JWT 쿠키 발급
       requestBody:
@@ -52,7 +54,7 @@ paths:
               $ref: '#/components/schemas/Credentials'
       responses:
         '200':
-          description: 로그인 성공. ACCESS_TOKEN과 세션 쿠키를 Set-Cookie로 발급
+          description: 로그인 성공. ACCESS_TOKEN HttpOnly JWT 쿠키를 Set-Cookie로 발급
           content:
             application/json:
               schema:
@@ -74,11 +76,9 @@ paths:
       - url: http://localhost:8080
     get:
       operationId: checkAuth
-      x-implementation-status: planned
+      x-implementation-status: implemented
       summary: 로그인 상태 확인
-      description: |
-        v0.3은 세션 또는 JWT를 허용합니다.
-        FastAPI는 JWT만 인정하므로 두 서버의 판정 일치 정책을 확정해야 합니다.
+      description: ACCESS_TOKEN JWT 쿠키의 서명과 필수 claim을 검증합니다.
       responses:
         '200':
           description: ok, via, username 및 JWT인 경우 sub
@@ -89,8 +89,9 @@ paths:
       - url: http://localhost:8080
     post:
       operationId: logout
-      x-implementation-status: planned
-      summary: 세션 종료와 쿠키 삭제
+      x-implementation-status: implemented
+      security: []
+      summary: JWT 쿠키 삭제
       description: 발급한 JWT 자체의 조기 폐기는 v0.3에 포함되지 않습니다.
       responses:
         '302':
@@ -214,6 +215,117 @@ paths:
           $ref: '#/components/responses/InvalidRequest'
         '503':
           $ref: '#/components/responses/Unavailable'
+  /speech-to-text:
+    post:
+      operationId: transcribeSpeech
+      x-implementation-status: implemented
+      summary: 녹음된 질문을 텍스트로 변환
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: 변환된 질문 텍스트
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [text]
+                properties:
+                  text:
+                    type: string
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '413':
+          description: 허용 크기를 초과한 녹음
+        '415':
+          description: 지원하지 않는 파일 형식
+        '502':
+          description: 외부 음성 서비스 처리 실패
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /chat-query:
+    post:
+      operationId: queryGeneralAssistant
+      x-implementation-status: implemented
+      summary: 별도 검색 인덱스 없이 일반 LLM에 질문
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [question]
+              properties:
+                question:
+                  type: string
+                  minLength: 1
+                  maxLength: 4000
+      responses:
+        '200':
+          description: 음성 재생에 사용할 일반 AI 답변
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Answer'
+                  - type: object
+                    properties:
+                      answer_mode:
+                        type: string
+                        const: general
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/InvalidRequest'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /text-to-speech:
+    post:
+      operationId: synthesizeSpeech
+      x-implementation-status: implemented
+      summary: RAG 답변 텍스트를 음성으로 변환
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [text]
+              properties:
+                text:
+                  type: string
+                  minLength: 1
+                  maxLength: 5000
+      responses:
+        '200':
+          description: MP3 음성
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            audio/mpeg:
+              schema:
+                type: string
+                format: binary
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/InvalidRequest'
+        '502':
+          description: 외부 음성 서비스 처리 실패
+        '503':
+          $ref: '#/components/responses/Unavailable'
   /health:
     get:
       operationId: getHealth
@@ -272,7 +384,7 @@ components:
         password:
           type: string
           format: password
-          minLength: 1
+          minLength: 8
     Question:
       type: object
       required: [question]

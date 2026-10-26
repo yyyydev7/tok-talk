@@ -15,9 +15,14 @@ x-implementation-status: planned인 경로는 아직 서버에 없습니다.
 - 미인증은 401, 잘못된 요청은 422, 의존성 장애는 503입니다.
 - 출처는 검색 결과의 메타데이터에서 구성하고 LLM이 만들어내게 하지 않습니다.
 - 재고는 별도 DB 조회이며 items: []를 수량 0으로 해석하지 않습니다.
+- 음성 변환은 FastAPI가 ElevenLabs를 서버 측에서 호출하며 두 경로 모두 JWT 쿠키를 검증합니다.
+- 외부 음성 서비스 오류와 설정값은 클라이언트 응답에 노출하지 않습니다.
+- 기본 음성 대화는 STT → 일반 LLM `/chat-query` → TTS 순서이며 KOSHA 인덱스와 분리됩니다.
 
-Java의 세션 인증과 FastAPI의 JWT 인증 일치, CSRF, 로그인 복귀 주소,
-공통 오류 본문과 질문 최대 길이는 backend/docs/decisions.md의 미결정 항목입니다.
+- Java와 FastAPI는 HS256 JWT의 `sub`, `iss`, `aud`, `iat`, `exp`, `jti`를 동일하게 검증합니다.
+- JWT는 15분 동안 유효하고 `ACCESS_TOKEN` HttpOnly, SameSite=Strict 쿠키로 전달됩니다.
+- 공개 HTTPS 배포에서는 `COOKIE_SECURE=true`가 필수입니다.
+- 로그인 복귀 주소, 토큰 조기 폐기, 공통 오류 본문과 질문 최대 길이는 추가 결정 항목입니다.
 오류 응답의 상세 스키마는 합의 전이므로 이 명세에서 고정하지 않았습니다.
 
 변경 시 이 명세와 examples, 서버 스키마, 프론트 호출을 함께 검토합니다.
