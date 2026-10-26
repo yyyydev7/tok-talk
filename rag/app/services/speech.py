@@ -22,6 +22,7 @@ class SpeechSettings:
     stt_model: str
     stt_language: str
     output_format: str
+    voice_speed: float
     timeout_seconds: float
 
     @classmethod
@@ -33,6 +34,7 @@ class SpeechSettings:
             stt_model=os.getenv("ELEVENLABS_STT_MODEL", "scribe_v2").strip(),
             stt_language=os.getenv("ELEVENLABS_STT_LANGUAGE", "kor").strip(),
             output_format=os.getenv("ELEVENLABS_OUTPUT_FORMAT", "mp3_44100_128").strip(),
+            voice_speed=float(os.getenv("ELEVENLABS_VOICE_SPEED", "1.0")),
             timeout_seconds=float(os.getenv("ELEVENLABS_TIMEOUT_SECONDS", "60")),
         )
 
@@ -73,13 +75,21 @@ class ElevenLabsSpeechService:
     async def synthesize(self, text: str) -> tuple[bytes, str]:
         if not self.settings.voice_id:
             raise SpeechConfigurationError("ELEVENLABS_VOICE_ID is not configured")
+        if not 0.7 <= self.settings.voice_speed <= 1.2:
+            raise SpeechConfigurationError(
+                "ELEVENLABS_VOICE_SPEED must be between 0.7 and 1.2"
+            )
         try:
             async with httpx.AsyncClient(timeout=self.settings.timeout_seconds) as client:
                 response = await client.post(
                     f"{self.base_url}/text-to-speech/{self.settings.voice_id}",
                     params={"output_format": self.settings.output_format},
                     headers={**self._headers(), "Accept": "audio/mpeg"},
-                    json={"text": text, "model_id": self.settings.tts_model},
+                    json={
+                        "text": text,
+                        "model_id": self.settings.tts_model,
+                        "voice_settings": {"speed": self.settings.voice_speed},
+                    },
                 )
             response.raise_for_status()
         except SpeechConfigurationError:
