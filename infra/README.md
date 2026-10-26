@@ -11,16 +11,18 @@
 
 ## 현재 제공 범위
 
-- 개발 구성: frontend, backend, rag, db
+- 개발 구성: frontend, backend, rag, db와 인덱스를 준비하는 indexer
 - 데모 구성: 위 서비스의 release 이미지와 같은 출처의 HTTP 프록시
-- DB는 빈 tok_talk 데이터베이스와 로컬 개발용 일반 계정만 생성
-- 마이그레이션·재고 시드·테이블별 권한 분리는 담당자가 구현할 위치와 규칙만 제공
-- Java와 FastAPI의 DB 설정은 전달되지만 아직 연결하지 않음
+- Java 인증 서버는 MariaDB에 가입 계정을 저장하고 JWT 쿠키를 발급
+- FastAPI는 같은 JWT 설정으로 인증하며 FAISS 물질 목록·질문 API를 제공
+- 재고 조회·재고 시드·테이블별 권한 분리는 미구현
 - Compose의 프로세스 검사는 /health/live 사용; 업무 준비 상태는 /health로 별도 확인
 
 DB와 인덱스 준비 상태를 서버 생존과 묶지 않았습니다.
 향후 재고 DB 장애가 RAG 컨테이너 재시작이나 전체 접근 차단으로 이어지지 않도록 유지하세요.
 DB를 사용하는 초기화 작업에는 db의 service_healthy 의존성을 추가합니다.
+indexer가 성공한 뒤 RAG가 시작되며, 호스트의 `datapipeline/data/indexes/current`를
+RAG 컨테이너의 `/data/indexes/current`로 읽습니다. `RAG_INDEX_PATH`로 변경할 수 있습니다.
 
 ## 포트
 
@@ -39,11 +41,115 @@ DB를 사용하는 초기화 작업에는 db의 service_healthy 의존성을 추
 접속: http://localhost:8088 (DEMO_HTTP_PORT로 변경 가능).
 브라우저의 /api/*는 Java, /rag-query 및 /chemicals, /inventory, /health는 FastAPI로 전달됩니다.
 루트 /는 빌드된 Vue 화면을 제공합니다. VITE_*는 빌드 시 고정되는 공개 설정입니다.
+기본 프로젝트 이름이 개발 구성과 달라 DB 볼륨과 가입 계정도 분리됩니다.
 
-이 파일은 공개 HTTPS 배포를 완료한 구성이 아닙니다.
-공개 전에는 TLS 종료, 실제 도메인, 쿠키 Secure/SameSite/Path, CSRF,
-요청 제한, 테이블별 DB 계정과 이미지 digest를 확정하고 구현해야 합니다.
-기능 API도 아직 구현하지 않았으므로 공개 서비스로 안내하지 마세요.
+## 기동·인증 검증
+
+각 구성 실행 후 다음 검사를 사용합니다.
+
+    python3 infra/tests/e2e/smoke.py
+    python3 infra/tests/e2e/proxy_smoke.py
+
+첫 명령은 개발 구성, 두 번째 명령은 데모 구성을 검사합니다. 화면과 프로세스 생존에 더해
+실제 가입·중복 거절·잘못된 비밀번호 거절·로그인·JWT 쿠키·로그아웃과 보호된 RAG 경로를 확인합니다.
+RAG `/health`의 503은 재고 DB 미구현을 반영합니다. `index_ready`에 따라 인증된 물질 목록의
+200 또는 인덱스 사용 불가 503을 확인하며, 재고 API는 아직 404를 예상합니다.
+
+검사마다 임의 가입 계정 하나가 DB에 남습니다. 쿠키는 메모리에만 보관하고 토큰·비밀번호는
+출력하지 않습니다. 실제 LLM 답변 생성은 별도 화면 검증이 필요합니다.
+자세한 범위와 포트 변경 인자는 [검사 안내](tests/e2e/README.md)를 참고하세요.
+
+`compose.demo.yaml` 단독 구성은 로컬 HTTP용입니다.
+발표·테스트용 임시 HTTPS 공개는 아래 절차를 사용하세요.
+상시 운영 서버 배포에는 실제 도메인, 테이블별 DB 계정, 이미지 digest,
+DB 백업·복구와 키 교체 절차를 별도로 준비해야 합니다.
+
+## 발표·테스트용 임시 HTTPS 공개
+
+다른 PC에서 데모 실행을 재현하고 로그인·질문·출처 표시까지 확인한 다음 진행합니다.
+데모 스택이 실행 중인 상태에서 프로젝트 루트에서 실행하세요.
+
+    python3 infra/scripts/public_demo.py start
+
+스크립트가 Cloudflare Quick Tunnel의 `https://...trycloudflare.com` 주소를 출력합니다.
+별도 서버·도메인·Cloudflare 계정이 필요하지 않습니다. 처음 실행하면 공식
+`cloudflare/cloudflared` 이미지를 다운로드합니다. 공유기 포트 개방도 필요하지 않습니다.
+서비스는 이 PC와 Docker가 실행 중인 동안 사용할 수 있고, PC 절전 중에는 접속할 수 없습니다.
+Quick Tunnel은 개발·테스트용이며 상시 운영을 보장하지 않습니다.
+공식 안내: https://developers.cloudflare.com/tunnel/get-started/quick-tunnels/
+
+### 연결 방식과 선택 이유
+
+이 구성은 **Cloudflare Quick Tunnel로 로컬 Docker 데모에 임시 HTTPS 입구를 추가**합니다.
+서비스와 DB는 계속 이 PC에서 실행되고, `cloudflared` 컨테이너가 Cloudflare로 나가는
+연결을 만듭니다. 외부 브라우저의 요청은 이 연결을 거쳐 공개 전용 Nginx로 들어옵니다.
+공유기의 포트 포워딩이나 앱 서버의 공인 IP 노출을 추가하지 않습니다.
+
+선택 기준은 발표·단기 테스트에 필요한 다음 조건입니다.
+
+- Cloudflare 계정과 도메인 등록 없이 임시 주소를 발급할 수 있습니다.
+- HTTPS 주소를 제공해 외부 브라우저에서 마이크 녹음과 Secure 쿠키를 사용할 수 있습니다.
+- 기존 Docker 서비스·DB·인덱스를 재사용해 별도 서버로 옮기는 작업을 줄입니다.
+- 시작·상태 확인·중지 명령을 스크립트 하나로 반복할 수 있습니다.
+
+PC·Docker·터널이 실행 중이어야 접속할 수 있고, 새 터널의 주소는 달라집니다.
+Quick Tunnel에는 가용성 보장이 없으므로 고정 주소와 상시 운영이 필요하면 별도
+호스팅·고정 도메인·운영용 터널 구성을 설계합니다.
+
+프로젝트 루트에서 직접 실행하는 명령은 다음과 같습니다.
+
+    python3 infra/scripts/public_demo.py start
+    python3 infra/scripts/public_demo.py status
+    python3 infra/scripts/public_demo.py stop
+
+`start`는 데모 실행 상태 확인 → 공개 Nginx 준비 → `cloudflared` 실행 → 랜덤 주소
+추출 → `.env.public` 저장 → 백엔드의 공개 Origin·Secure 쿠키 적용 → HTTPS 응답 확인을
+순서대로 수행합니다. 실제 컨테이너 안의 터널 명령은 다음과 같습니다.
+
+    cloudflared tunnel --no-autoupdate --protocol http2 --url http://public-proxy:80
+
+`public-proxy:80`은 Docker 내부 주소입니다. Cloudflare HTTPS에서 터널을 통해 이 Nginx로
+요청이 전달되고, 경로에 따라 Vue 화면·Java 인증·FastAPI 질문/음성 서비스로 나뉩니다.
+
+구조는 외부 브라우저 → Cloudflare HTTPS → tunnel → public-proxy → 기존 서비스입니다.
+`public-proxy`와 `tunnel` 두 컨테이너를 기존 데모 프로젝트에 추가합니다.
+DB·RAG·프런트 컨테이너와 기존 데이터를 그대로 사용하고 백엔드만 HTTPS 인증 설정으로
+재생성합니다. 기존 로그인은 다시 해야 합니다. 공개 중에는 출력된 HTTPS 주소를 사용하세요.
+백엔드가 공개 Origin만 허용하므로 로컬 8088의 로그인·가입은 중지 명령 실행 후 이용합니다.
+
+`compose.public.yaml`은 데모 파일에 덧붙이는 설정입니다. 단독 실행하지 마세요.
+시작 스크립트가 주소 발급 후 CORS와 Secure 쿠키를 적용하고, 전용 Nginx에서 잘못된 Host,
+Origin이 없거나 다른 사이트에서 온 POST 요청을 거절합니다.
+회원가입·로그인은 전체 방문자 합산 분당 30건(추가 burst 10), 일반 질문과 RAG 질문은
+세 경로 합산 분당 6건(추가 burst 5), 동시 질문 최대 2건으로 제한합니다.
+STT·TTS는 두 경로 합산 분당 12건(추가 burst 5), 동시 음성 요청 최대 2건입니다.
+초과하면 HTTP 429가 나옵니다. 음성 업로드는 실제 파일 기준 10 MiB까지 허용합니다.
+쿠키와 요청 본문은 프록시 로그에 기록하지 않습니다.
+실제 질문은 기존 LLM API 사용량에 포함됩니다.
+
+발급된 주소는 `.env.public`에 보관합니다. 이 파일에는 공개 주소만 있고 Git에서는 제외됩니다.
+실행 중 `start`를 다시 호출하면 기존 터널을 사용합니다. 터널을 종료하고 다시 시작하거나
+Docker/PC를 재시작하면 주소가 바뀔 수 있으므로 `start`를 다시 실행하고 새 주소를 공유하세요.
+
+    python3 infra/scripts/public_demo.py status
+    python3 infra/tests/e2e/proxy_smoke.py --base https://발급된주소.trycloudflare.com --public
+
+공개 검사는 화면·Vue 직접 경로·Origin 차단·Secure 쿠키·가입·로그인·로그아웃과
+준비된 인덱스의 실제 물질 목록을 확인합니다. 임의 계정 한 개가 DB에 남으며 실제 LLM
+질문은 별도 화면 검증이 필요합니다. 휴대폰 Wi-Fi를 끄고 모바일 데이터에서도 확인하세요.
+
+공개를 끝내려면 다음 명령을 실행합니다.
+
+    python3 infra/scripts/public_demo.py stop
+
+터널을 먼저 닫고 추가 컨테이너만 제거한 뒤 백엔드와 기존 프록시를 로컬 설정으로
+복구합니다. DB 볼륨과 인덱스는 보존하며 로컬 `http://localhost:8088`을 다시 사용할 수 있습니다.
+전체 데모를 정리할 때도 데이터가 필요하면 `down --volumes`를 사용하지 마세요.
+
+주소가 발급되지 않으면 Docker 인터넷 연결과 학교·회사망의 외부 TCP 7844 허용 여부를
+확인하세요. 이 구성은 터널 연결에 HTTP/2를 사용합니다. 시작 도중 실패하면 스크립트가
+터널을 닫고 로컬 데모 복구를 시도합니다. 강제 종료 등으로 남은 컨테이너도 `stop`으로 정리합니다.
+키·JWT·DB 비밀번호가 포함된 Compose `config` 전체 출력이나 `.env.demo`를 공유하지 마세요.
 
 ## DB 데이터 유지
 

@@ -1,0 +1,49 @@
+# Temporary HTTPS access to an already running demo stack.
+# Start/stop with: python3 infra/scripts/public_demo.py start|stop
+services:
+  backend:
+    environment:
+      COOKIE_SECURE: "true"
+      CORS_ORIGINS: ${PUBLIC_ORIGIN:-https://pending.invalid}
+
+  public-proxy:
+    image: nginx:1.30.6-alpine3.24
+    environment:
+      PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:-https://pending.invalid}
+      PUBLIC_HOST: ${PUBLIC_HOST:-pending.invalid}
+      NGINX_ENVSUBST_FILTER: ^PUBLIC_
+    volumes:
+      - ./infra/proxy/public.conf.template:/etc/nginx/templates/default.conf.template:ro
+    # No host ports: this gateway is reachable through the tunnel only.
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --header=\"Host: $$PUBLIC_HOST\" -O /dev/null http://127.0.0.1/"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 5s
+    depends_on:
+      frontend:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+      rag:
+        condition: service_healthy
+    logging:
+      driver: json-file
+      options:
+        max-size: 5m
+        max-file: "2"
+
+  tunnel:
+    image: cloudflare/cloudflared:2026.10.3
+    command: ["tunnel", "--no-autoupdate", "--protocol", "http2", "--url", "http://public-proxy:80"]
+    # A restart can allocate a new random URL. Restart via public_demo.py instead.
+    restart: "no"
+    depends_on:
+      public-proxy:
+        condition: service_healthy
+    logging:
+      driver: json-file
+      options:
+        max-size: 5m
+        max-file: "2"

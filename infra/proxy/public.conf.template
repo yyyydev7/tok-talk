@@ -1,0 +1,147 @@
+# Loaded inside nginx's http context after the image entrypoint substitutes
+# PUBLIC_HOST and PUBLIC_ORIGIN. Set NGINX_ENVSUBST_FILTER=^PUBLIC_ so nginx's
+# own variables below remain intact. This proxy must have no published ports;
+# Cloudflare Tunnel is its only public entry point and terminates HTTPS.
+
+# Random Quick Tunnel names can exceed nginx's default hostname hash bucket.
+server_names_hash_bucket_size 128;
+map_hash_bucket_size 128;
+
+map $http_origin $public_origin_allowed {
+    default 0;
+    "${PUBLIC_ORIGIN}" 1;
+}
+
+map $request_method $public_requires_origin {
+    default 1;
+    GET 0;
+    HEAD 0;
+    OPTIONS 0;
+}
+
+map "$public_requires_origin:$public_origin_allowed" $public_origin_denied {
+    default 0;
+    "1:0" 1;
+}
+
+# Question budgets are shared across all visitors and chat/RAG query routes. Requests
+# without an auth cookie are rejected by RAG's JWT guard and cannot call an LLM;
+# they do not consume the shared question budget. Invalid nonempty cookies are
+# still limited. Forwarded IP headers do not affect these keys.
+map $cookie_ACCESS_TOKEN $public_rag_budget {
+    "" "";
+    default $server_name;
+}
+
+limit_req_zone $server_name zone=public_auth:1m rate=30r/m;
+limit_req_zone $public_rag_budget zone=public_rag:1m rate=6r/m;
+limit_conn_zone $public_rag_budget zone=public_rag_active:1m;
+# A voice question can make one STT and one TTS call in addition to its question.
+limit_req_zone $public_rag_budget zone=public_speech:1m rate=12r/m;
+limit_conn_zone $public_rag_budget zone=public_speech_active:1m;
+
+server {
+    listen 80 default_server;
+    server_name "${PUBLIC_HOST}";
+    server_tokens off;
+    client_max_body_size 16k;
+    client_header_timeout 15s;
+    client_body_timeout 15s;
+
+    # Compare the raw Host header so an unexpected host or port is rejected.
+    # The container healthcheck must also send Host: ${PUBLIC_HOST}.
+    if ($http_host != "${PUBLIC_HOST}") {
+        return 421;
+    }
+
+    # Cookie-authenticated mutations require the exact public browser origin.
+    # Missing Origin is rejected as well; read-only healthchecks still work.
+    if ($public_origin_denied) {
+        return 403;
+    }
+
+    limit_req_status 429;
+    limit_conn_status 429;
+
+    proxy_http_version 1.1;
+    proxy_connect_timeout 5s;
+    proxy_set_header Connection "";
+    proxy_set_header Host "${PUBLIC_HOST}";
+    proxy_set_header X-Forwarded-Host "${PUBLIC_HOST}";
+    proxy_set_header X-Forwarded-Proto https;
+    proxy_set_header X-Forwarded-Port 443;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $remote_addr;
+
+    # The standard combined access log does not include cookies or request bodies.
+    access_log /var/log/nginx/access.log combined;
+
+    location ~ ^/api/(login|signup)$ {
+        limit_req zone=public_auth burst=10 nodelay;
+        proxy_pass http://backend:8080;
+    }
+
+    location /api/ {
+        proxy_pass http://backend:8080;
+    }
+
+    location = /chemicals {
+        proxy_pass http://rag:8001;
+        proxy_read_timeout 180s;
+    }
+
+    location = /chat-query {
+        limit_req zone=public_rag burst=5 nodelay;
+        limit_conn public_rag_active 2;
+        proxy_pass http://rag:8001;
+        proxy_read_timeout 180s;
+    }
+
+    location = /rag-query {
+        limit_req zone=public_rag burst=5 nodelay;
+        limit_conn public_rag_active 2;
+        proxy_pass http://rag:8001;
+        proxy_read_timeout 180s;
+    }
+
+    location = /rag-query/auto {
+        limit_req zone=public_rag burst=5 nodelay;
+        limit_conn public_rag_active 2;
+        proxy_pass http://rag:8001;
+        proxy_read_timeout 180s;
+    }
+
+    location = /speech-to-text {
+        # FastAPI limits the file to 10 MiB; leave room for multipart metadata.
+        client_max_body_size 11m;
+        limit_req zone=public_speech burst=5 nodelay;
+        limit_conn public_speech_active 2;
+        proxy_pass http://rag:8001;
+        proxy_read_timeout 90s;
+    }
+
+    location = /text-to-speech {
+        client_max_body_size 64k;
+        limit_req zone=public_speech burst=5 nodelay;
+        limit_conn public_speech_active 2;
+        proxy_pass http://rag:8001;
+        proxy_read_timeout 90s;
+    }
+
+    location = /inventory {
+        proxy_pass http://rag:8001;
+    }
+
+    location = /health {
+        proxy_pass http://rag:8001;
+    }
+
+    location = /health/live {
+        proxy_pass http://rag:8001;
+    }
+
+    # Vue Router owns /login, /signup, /services and the other page routes.
+    location / {
+        proxy_pass http://frontend:80;
+    }
+}

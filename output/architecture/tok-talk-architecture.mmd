@@ -1,0 +1,32 @@
+flowchart TB
+    browser["브라우저: Vue 3 · TypeScript · Vue Router"]
+    proxy["Nginx Reverse Proxy: localhost:8088"]
+    frontend["Frontend Nginx:80 / Vue 정적 파일"]
+    auth["Java 21 인증 서버:8080 / BCrypt · JWT 쿠키 발급"]
+    ai["FastAPI:8001 / JWT 쿠키 자체 검증 / 일반 대화 · 음성 · RAG"]
+    db[("MariaDB:3306 / auth_users")]
+    openAi["OpenAI GPT / 기본 gpt-4o-mini / 일반 답변·RAG 답변"]
+    elevenLabs["ElevenLabs / STT: scribe_v2 / TTS: eleven_multilingual_v2"]
+    faiss[("FAISS + BAAI/bge-m3 / 공유 파일 indexes/current")]
+    kosha["KOSHA MSDS API"]
+    niosh["NIOSH Pocket Guide PDF"]
+    indexer["Python indexer / 정제·청킹·로컬 임베딩·버전 인덱스 생성"]
+
+    browser -->|"HTTP · HttpOnly ACCESS_TOKEN 쿠키 자동 전송"| proxy
+    proxy -->|"화면 경로"| frontend
+    proxy -->|"/api/*"| auth
+    proxy -->|"/chat-query · /speech-to-text · /text-to-speech · RAG API"| ai
+    auth -->|"회원 저장·조회"| db
+    ai -->|"일반 질문 또는 RAG 답변 생성"| openAi
+    ai -->|"음성 인식·합성"| elevenLabs
+    ai -->|"RAG 검색: 읽기 전용 로드"| faiss
+    kosha -->|"MSDS 수집"| indexer
+    niosh -->|"PDF 파싱"| indexer
+    indexer -.->|"사전 준비: BGE-M3 임베딩 · current 교체"| faiss
+
+    classDef gateway fill:#201b4b,color:#fff,stroke:#201b4b
+    classDef service fill:#f0f2ff,stroke:#4d3fe3,color:#151c30
+    classDef data fill:#f5faf9,stroke:#218579,color:#151c30
+    class proxy gateway
+    class browser,frontend,auth,ai service
+    class db,faiss,indexer,kosha,niosh data
