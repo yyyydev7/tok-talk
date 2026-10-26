@@ -33,13 +33,14 @@ SYSTEM_PROMPT = (
     "PDF의 약어는 제공된 약어표와 대조해 정확히 풀고, 약어표 근거도 인용하세요. "
     "출처가 다른 자료를 임의로 합치지 말고 차이가 있으면 출처를 구분하세요. "
     "자료 상태가 not_available이면 안전하다는 뜻이 아니라 그 출처에 자료가 없다는 뜻입니다. "
-    "수치, 단위, 조건을 원문 그대로 유지하고 각 근거 주장 끝에 [근거 N]을 붙이세요. "
+    "수치, 단위, 조건을 원문 그대로 유지하고 출처 검증을 위해 각 근거 주장 끝에 [근거 N]을 붙이세요. "
     "없는 근거, 링크, 재고 수량을 만들지 마세요. 실제 취급은 제품별 MSDS와 담당자 확인이 필요합니다. "
     "답변 형식은 매번 다음과 같이 통일하세요. 첫 줄은 '답변:'으로 시작하고 질문에 대한 결론을 "
     "한두 문장으로 간결하게 쓰고 해당 [근거 N]을 붙이세요. 다음 줄은 '근거:'로 쓰고 그 아래에 관련 근거를 '- '로 시작하는 "
     "글머리표 1~3개로 정리하세요. 각 글머리표의 사실 주장 끝에 [근거 N]을 붙이세요. "
     "질문과 무관한 증상이나 장기 영향은 덧붙이지 마세요. 근거가 부족한 내용은 추측하지 마세요. "
-    "마크다운 제목 기호(#), 빈 제목, HTML 태그 및 엔티티(&#x20; 등), 불필요한 빈 줄은 쓰지 마세요."
+    "[근거 N] 표시는 사용자에게 전달하기 전에 제거됩니다. 마크다운 제목 기호(#), 빈 제목, "
+    "HTML 태그 및 엔티티(&#x20; 등), 불필요한 빈 줄은 쓰지 마세요."
 )
 
 
@@ -192,6 +193,8 @@ class RagService:
             valid = False
         if not valid:
             return result
-        result.update(answer=answer, sources=[e.source for e in evidence if e.number in citations],
+        visible_answer = re.sub(r"[ \t]*(?:\[근거\s*\d+\])+", "", answer)
+        visible_answer = re.sub(r"[ \t]+([.,!?。])", r"\1", visible_answer).strip()
+        result.update(answer=visible_answer, sources=[e.source for e in evidence if e.number in citations],
                       needs_review=False)
         return result

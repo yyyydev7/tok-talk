@@ -62,6 +62,14 @@ class RagServiceTest(unittest.TestCase):
         self.assertEqual(result["sources"][0]["url"], "https://example.org/msds")
         self.assertEqual(result["sources"][0]["pdf_page"], "")
 
+    def test_citations_are_hidden_after_sources_are_validated(self):
+        answer = "답변: 흡입 노출 가능 [근거 1][근거 2].\n근거:\n- 흡입 [근거 1]."
+        result = RagService(FakeStore([hit(), hit()]), FakeLlm(answer)).answer(
+            "acetone", "노출 경로는?", top_k=2
+        )
+        self.assertEqual(result["answer"], "답변: 흡입 노출 가능.\n근거:\n- 흡입.")
+        self.assertEqual(len(result["sources"]), 2)
+
     def test_missing_or_invalid_citation_needs_review(self):
         for answer in ("근거 없음", "임의 답변 [근거 9]"):
             with self.subTest(answer=answer):
