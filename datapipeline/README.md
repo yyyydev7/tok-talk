@@ -2,6 +2,21 @@
 
 KOSHA MSDS API와 NIOSH Pocket Guide PDF를 사용해 5개 물질을 수집·정제하고 BGE-M3 및 FAISS 인덱스를 생성합니다. NIOSH 웹페이지는 수집하지 않습니다. Compose의 `indexer`가 RAG 시작 전에 인덱스를 확인하고, 필요할 때만 다시 생성합니다.
 
+청킹은 원본 레코드의 `section`·`label` 경계를 유지합니다. `자료없음` 레코드는 원본
+JSON에 보존하되 임베딩에서는 제외하고, 긴 레코드는 약 1,000자(본문 중첩 최대
+100자)로 나누면서 모든 청크에 물질명·CAS·출처·항목을 다시 붙입니다. 임베딩
+모델은 `BAAI/bge-m3` 그대로입니다. 청킹 코드가 바뀌면 자동 빌더가 새 인덱스를
+생성합니다.
+
+같은 질문·CAS 필터·top-5로 두 인덱스를 비교하는 스크립트는 다음과 같습니다.
+일반 질문에서 공통 NIOSH 참고표를 제외하고, 약어 질문에서만 해당 표를 검색합니다.
+
+```sh
+python -m pipeline.evaluate_chunking \
+  --before data/indexes/기존인덱스 --after data/indexes/새인덱스 \
+  --output reports/chunking_comparison.md
+```
+
 ## 구조
 
 - `pipeline/`: 수집·적재·검색 코드와 검증 코드
