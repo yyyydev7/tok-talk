@@ -1,6 +1,9 @@
 """General question answering that does not depend on the KOSHA/FAISS index."""
 
 import os
+import re
+
+from app.services.rag import MATERIALS
 
 
 SYSTEM_PROMPT = (
@@ -10,6 +13,39 @@ SYSTEM_PROMPT = (
     "실제 취급은 제품별 MSDS와 안전 담당자의 확인을 따르도록 안내하세요. "
     "답변은 음성으로 읽기 쉬운 자연스러운 문장으로 작성하세요."
 )
+
+PARTICLES = {"", "은", "는", "이", "가", "을", "를", "의", "에", "에서",
+             "과", "와", "도", "만", "로", "으로", "부터", "까지", "에는"}
+
+
+def _one_edit(left: str, right: str) -> bool:
+    if abs(len(left) - len(right)) > 1:
+        return False
+    if len(left) == len(right):
+        return sum(a != b for a, b in zip(left, right)) == 1
+    if len(left) > len(right):
+        left, right = right, left
+    return any(left == right[:i] + right[i + 1:] for i in range(len(right)))
+
+
+def _canonical_question(question: str) -> tuple[str, str | None, str | None]:
+    """Correct a unique Korean chemical-name typo, leaving ambiguous text alone."""
+    names = tuple(name for name, _cas in MATERIALS.values())
+    if any(name in question for name in names):
+        return question, None, None
+
+    candidates = []
+    for match in re.finditer(r"[가-힣]+", question):
+        word = match.group()
+        for name in names:
+            for length in (len(name) - 1, len(name), len(name) + 1):
+                if (3 <= length <= len(word) and word[length:] in PARTICLES
+                        and _one_edit(word[:length], name)):
+                    candidates.append((match.start(), length, word[:length], name))
+    if len({name for _start, _length, _typo, name in candidates}) != 1:
+        return question, None, None
+    start, length, typo, name = candidates[0]
+    return question[:start] + name + question[start + length:], typo, name
 
 
 class ChatConfigurationError(RuntimeError):
@@ -25,6 +61,7 @@ class ChatService:
         self.llm = llm
 
     def answer(self, question: str) -> str:
+        canonical_question, typo, chemical_name = _canonical_question(question)
         if self.llm is None:
             api_key = os.getenv("LLM_API_KEY") or os.getenv("OPENAI_API_KEY")
             if not api_key:
@@ -44,7 +81,9 @@ class ChatService:
         try:
             response = self.llm.invoke([
                 ("system", SYSTEM_PROMPT),
-                ("human", question),
+                ("human", canonical_question if chemical_name is None else
+                 f"표준 물질명은 {chemical_name}입니다. 답변에도 이 이름을 사용하세요.\n"
+                 f"질문: {canonical_question}"),
             ])
             answer = response.content if isinstance(response.content, str) else ""
         except ChatConfigurationError:
@@ -53,4 +92,5 @@ class ChatService:
             raise ChatProviderError("answer model request failed") from exc
         if not answer.strip():
             raise ChatProviderError("answer model returned an empty response")
-        return answer.strip()
+        answer = answer.strip()
+        return answer.replace(typo, chemical_name) if typo and chemical_name else answer

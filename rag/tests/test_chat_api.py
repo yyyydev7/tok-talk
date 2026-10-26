@@ -95,6 +95,28 @@ class ChatServiceTest(unittest.TestCase):
         )
         self.assertEqual(ChatService(fake_llm).answer("질문"), "간결한 답변입니다.")
 
+    def test_chemical_typo_uses_canonical_name_in_prompt_and_answer(self):
+        prompts = []
+
+        def invoke(messages):
+            prompts.append(messages[-1][1])
+            return SimpleNamespace(content="이세톤은 서늘한 곳에 보관하세요.")
+
+        answer = ChatService(SimpleNamespace(invoke=invoke)).answer("이세톤 보관 방법")
+        self.assertIn("질문: 아세톤 보관 방법", prompts[0])
+        self.assertNotIn("이세톤", prompts[0])
+        self.assertEqual(answer, "아세톤은 서늘한 곳에 보관하세요.")
+
+    def test_unknown_name_is_not_guessed(self):
+        prompts = []
+
+        def invoke(messages):
+            prompts.append(messages[-1][1])
+            return SimpleNamespace(content="확인할 수 없습니다.")
+
+        ChatService(SimpleNamespace(invoke=invoke)).answer("화학물질 보관 방법")
+        self.assertEqual(prompts, ["화학물질 보관 방법"])
+
     def test_missing_key_is_a_configuration_error(self):
         with patch.dict(os.environ, {"LLM_API_KEY": "", "OPENAI_API_KEY": ""}):
             with self.assertRaises(ChatConfigurationError):
