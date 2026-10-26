@@ -324,7 +324,7 @@ export async function submitQuestion(_material?: Material | null): Promise<RagRe
   clearResult()
   pageError.value = ''
   try {
-    const result = await request<RagResponse>(ragBase, '/chat-query', {
+    const result = await request<RagResponse>(ragBase, '/rag-query/auto', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ question: text }),
