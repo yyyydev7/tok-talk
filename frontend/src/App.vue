@@ -1,11 +1,14 @@
 <script setup lang="ts">
-import { computed, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 import { authState, logout, username } from './stores/tokTalk'
+import { toggleLanguage, toggleTheme, tr, uiLanguage, uiTheme } from './stores/uiSettings'
 
 const route = useRoute()
 const router = useRouter()
-const hasAuthBackground = computed(() => route.name === 'login' || route.name === 'signup')
+const hasAuthBackground = computed(() => route.name === 'home' || route.name === 'login' || route.name === 'signup')
+const siteMapOpen = ref(false)
+const homeRoute = { name: 'home' }
 
 watch(authState, (state) => {
   if (state === 'signed-out' && route.meta.requiresAuth) {
@@ -32,18 +35,35 @@ async function signOut() {
     </div>
 
     <header class="topbar">
-      <RouterLink class="brand" :to="{ name: 'question' }" aria-label="톡,talk 홈"><span class="brand-logo-window"><img class="brand-logo" src="/media/tok-talk-brand-mark.png?v=3" alt="" /></span><span>톡,talk</span></RouterLink>
-      <nav v-if="authState === 'signed-in'" class="app-navigation" aria-label="주요 메뉴">
-        <RouterLink :to="{ name: 'question' }" exact-active-class="active">질문</RouterLink>
-        <RouterLink :to="{ name: 'materials' }" exact-active-class="active">물질 검색</RouterLink>
-        <RouterLink v-if="route.name === 'answers' || route.name === 'inventory'" :to="{ name: 'answers' }" exact-active-class="active">답변·출처</RouterLink>
-      </nav>
-      <div class="topbar-right">
+      <div class="header-main">
+        <RouterLink class="brand" :to="homeRoute" :aria-label="tr('홈', 'Home')"><span class="brand-logo-window"><img class="brand-logo" src="/media/tok-talk-brand-mark.png?v=3" alt="" /></span><span class="brand-name">톡,talk</span></RouterLink>
+        <div class="header-utility">
+          <RouterLink class="home-icon-link" :to="homeRoute" :aria-label="tr('홈으로 이동', 'Go home')" :title="tr('홈', 'Home')"><img src="/media/home-icon.png" alt="" /></RouterLink>
+          <RouterLink class="header-utility-button" :to="{ name: 'question' }" :aria-label="tr('질문', 'Ask')" @click="siteMapOpen = false">{{ tr('질문', 'Ask') }}</RouterLink>
+          <div class="sitemap-wrap">
+            <button class="header-utility-button" type="button" :aria-expanded="siteMapOpen" @click="siteMapOpen = !siteMapOpen">{{ tr('사이트맵', 'Sitemap') }}</button>
+          </div>
+          <button class="header-utility-button language-toggle" type="button" :aria-label="uiLanguage === 'ko' ? 'Switch to English' : '한국어로 전환'" @click="toggleLanguage">{{ uiLanguage === 'ko' ? 'EN' : 'KO' }}</button>
+          <button class="theme-toggle" type="button" :aria-label="uiTheme === 'light' ? tr('다크 모드로 전환', 'Switch to dark mode') : tr('라이트 모드로 전환', 'Switch to light mode')" :title="uiTheme === 'light' ? tr('다크 모드', 'Dark mode') : tr('라이트 모드', 'Light mode')" @click="toggleTheme">
+            <svg v-if="uiTheme === 'light'" class="theme-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4" /><path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42" /></svg>
+            <svg v-else class="theme-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.4 15.1A8.7 8.7 0 0 1 8.9 3.6 8.8 8.8 0 1 0 20.4 15.1Z" /></svg>
+          </button>
         <template v-if="authState === 'signed-in'">
-          <span class="user-chip"><span class="avatar">{{ username.slice(0, 1) || '연' }}</span>{{ username || '로그인 사용자' }}</span>
-          <button class="text-button" type="button" @click="signOut">로그아웃</button>
+          <span class="user-chip"><span class="avatar">{{ username.slice(0, 1) || '연' }}</span>{{ username || tr('로그인 사용자', 'Signed-in user') }}</span>
+          <button class="text-button" type="button" @click="signOut">{{ tr('로그아웃', 'Sign out') }}</button>
+        </template>
+        <template v-else>
+          <RouterLink class="header-auth-link" :to="{ name: 'login' }">{{ tr('로그인', 'Sign in') }}</RouterLink>
+          <RouterLink class="header-signup-link" :to="{ name: 'signup' }">{{ tr('회원가입', 'Create account') }}</RouterLink>
         </template>
       </div>
+      </div>
+      <nav v-if="siteMapOpen" class="sitemap-menu" :aria-label="tr('사이트맵', 'Sitemap')" @keydown.esc="siteMapOpen = false">
+        <div class="sitemap-group">
+          <a href="https://msds.kosha.or.kr/MSDSInfo/kcic/msdssearchAll.do" target="_blank" rel="noopener noreferrer">KOSHA MSDS <span aria-hidden="true">↗</span></a>
+          <a href="https://www.cdc.gov/niosh/npg/" target="_blank" rel="noopener noreferrer">NIOSH Pocket Guide <span aria-hidden="true">↗</span></a>
+        </div>
+      </nav>
     </header>
 
     <RouterView />
@@ -51,35 +71,34 @@ async function signOut() {
     <footer class="site-footer">
       <div class="footer-main">
         <div class="footer-brand-block">
-          <RouterLink class="footer-brand" :to="{ name: 'question' }" aria-label="톡,talk 홈">
+          <RouterLink class="footer-brand" :to="homeRoute" :aria-label="tr('톡,talk 홈', 'Tok,talk home')">
             <img src="/media/tok-talk-brand-mark.png?v=3" alt="" />
-            <span>톡,talk</span>
+            <span class="footer-brand-name">톡,talk</span>
           </RouterLink>
-          <p>근거를 확인하는 안전정보</p>
+          <p>{{ tr('연구실 화학물질 안전정보 도우미', 'Laboratory Chemical Safety Information Assistant') }}</p>
+          <small class="footer-copyright">© 2026 SKALA AI 서비스 개발 Mini-project</small>
         </div>
 
-        <nav class="footer-column" aria-label="서비스 바로가기">
-          <h2>서비스</h2>
-          <RouterLink :to="{ name: 'question' }">질문하기</RouterLink>
-          <RouterLink :to="{ name: 'materials' }">물질 검색</RouterLink>
-          <RouterLink :to="{ name: 'materials' }">시연용 재고</RouterLink>
+        <nav class="footer-column" :aria-label="tr('서비스 바로가기', 'Service links')">
+          <h2>{{ tr('서비스', 'Services') }}</h2>
+          <RouterLink :to="{ name: 'question' }">{{ tr('질문하기', 'Ask a question') }}</RouterLink>
+          <RouterLink :to="{ name: 'materials' }">{{ tr('물질 검색', 'Search materials') }}</RouterLink>
         </nav>
 
-        <nav id="footer-sources" class="footer-column" aria-label="참고 자료">
-          <h2>참고 자료</h2>
+        <nav id="footer-sources" class="footer-column" :aria-label="tr('참고 자료', 'References')">
+          <h2>{{ tr('참고 자료', 'References') }}</h2>
           <a href="https://msds.kosha.or.kr/MSDSInfo/kcic/msdssearchMsds.do" target="_blank" rel="noopener noreferrer">KOSHA MSDS <span aria-hidden="true">↗</span></a>
           <a href="https://www.cdc.gov/niosh/npg/" target="_blank" rel="noopener noreferrer">NIOSH Pocket Guide <span aria-hidden="true">↗</span></a>
-          <a href="#footer-sources">출처·자료 기준</a>
+          <a href="#footer-sources">{{ tr('출처·자료 기준', 'Sources & data policy') }}</a>
         </nav>
 
         <div class="footer-column footer-guidance">
-          <h2>이용 안내</h2>
-          <RouterLink :to="{ name: 'question' }">서비스 소개</RouterLink>
-          <a href="#footer-sources">데이터 출처</a>
-          <a href="https://github.com/yyyydev7/tok-talk/issues" target="_blank" rel="noopener noreferrer">문의 <span aria-hidden="true">↗</span></a>
+          <h2>{{ tr('이용 안내', 'About & help') }}</h2>
+          <RouterLink :to="homeRoute">{{ tr('서비스 소개', 'About the service') }}</RouterLink>
+          <a href="#footer-sources">{{ tr('데이터 출처', 'Data sources') }}</a>
+          <a href="https://github.com/yyyydev7/tok-talk/issues" target="_blank" rel="noopener noreferrer">{{ tr('문의', 'Contact') }} <span aria-hidden="true">↗</span></a>
         </div>
       </div>
-      <div class="footer-bottom"><span>© 2026 톡,talk Mini Project</span></div>
     </footer>
   </div>
 </template>

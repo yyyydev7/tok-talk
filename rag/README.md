@@ -51,7 +51,8 @@ NIOSH 근거는 PDF 파일명·페이지를, KOSHA 근거는 출처 URL을 반�
 Vue 요청에는 쿠키를 포함해야 합니다.
 
 음성 API는 ElevenLabs를 서버에서만 호출합니다. `ELEVENLABS_API_KEY`와
-`ELEVENLABS_VOICE_ID`를 설정하고, 키 권한은 Speech to Text와 Text to Speech만
+`ELEVENLABS_VOICE_ID`를 설정하고, `ELEVENLABS_VOICE_SPEED`는 기본 속도인 `1.0`으로
+설정합니다(허용 범위 `0.7`~`1.2`). 키 권한은 Speech to Text와 Text to Speech만
 허용하세요. 모델·언어·출력 형식은 `.env.example`의 기본값을 필요에 따라
 바꿀 수 있습니다. 브라우저로 키를 전달하거나 `VITE_*` 변수에 넣지 않습니다.
 음성 업로드는 기본 10 MiB, 읽을 텍스트는 5,000자로 제한됩니다.
