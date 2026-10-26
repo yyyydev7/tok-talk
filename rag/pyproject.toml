@@ -12,6 +12,8 @@ dependencies = [
     "langchain-openai>=0.2,<2.0",
     "sentence-transformers>=3,<6",
     "faiss-cpu>=1.8,<2.0",
+    "httpx>=0.28,<1.0",
+    "python-multipart>=0.0.20,<1.0",
 ]
 
 [tool.uv]
