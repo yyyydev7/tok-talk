@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { answer, loadMaterials, materialQuery, materials, materialsBusy, materialsSearched, pageError, question, questionBusy, selectedMaterial, submitQuestion, transcribeAudio, username } from '../stores/tokTalk'
+import { answer, loadMaterials, materialQuery, materials, materialsBusy, materialsSearched, pageError, question, questionBusy, selectedMaterial, submitQuestion, synthesizeSpeech, transcribeAudio, username } from '../stores/tokTalk'
 import type { Material, RagResponse } from '../stores/tokTalk'
 import { tr, uiLanguage } from '../stores/uiSettings'
 
@@ -21,6 +21,12 @@ const weekdayGreeting = computed(() => {
 const recording = ref(false)
 const transcribing = ref(false)
 const voiceStatus = ref('')
+const audioElement = ref<HTMLAudioElement | null>(null)
+const audioUrl = ref('')
+const speechBusy = ref(false)
+const speechPlaying = ref(false)
+const speechError = ref('')
+let speechRequestId = 0
 const recordingSupported = typeof window !== 'undefined'
   && Boolean(navigator.mediaDevices?.getUserMedia)
   && typeof MediaRecorder !== 'undefined'
@@ -29,6 +35,45 @@ let stream: MediaStream | null = null
 let chunks: BlobPart[] = []
 let disposed = false
 const canAsk = computed(() => question.value.trim().length > 0 && !questionBusy.value && !transcribing.value)
+
+function releaseAudio() {
+  speechRequestId += 1
+  audioElement.value?.pause()
+  if (audioUrl.value) URL.revokeObjectURL(audioUrl.value)
+  audioUrl.value = ''
+  speechBusy.value = false
+  speechPlaying.value = false
+  speechError.value = ''
+}
+
+async function toggleSpeech() {
+  if (speechPlaying.value) {
+    audioElement.value?.pause()
+    return
+  }
+  const text = displayedAnswer.value?.answer.trim()
+  if (!text) return
+  const requestId = ++speechRequestId
+  speechError.value = ''
+  speechBusy.value = true
+  try {
+    if (!audioUrl.value) {
+      const audio = await synthesizeSpeech(text)
+      if (disposed || requestId !== speechRequestId) return
+      audioUrl.value = URL.createObjectURL(audio)
+      await nextTick()
+    }
+    if (disposed || requestId !== speechRequestId) return
+    await audioElement.value?.play()
+    speechPlaying.value = true
+  } catch (error) {
+    if (requestId === speechRequestId) speechError.value = error instanceof Error ? error.message : tr('답변 음성을 재생하지 못했습니다.', 'Could not play the answer audio.')
+  } finally {
+    if (requestId === speechRequestId) speechBusy.value = false
+  }
+}
+
+watch(displayedAnswer, releaseAudio)
 
 async function ask(autoSpeak = false) {
   const submittedQuestion = question.value.trim()
@@ -150,6 +195,7 @@ async function toggleRecording() {
 
 onBeforeUnmount(() => {
   disposed = true
+  releaseAudio()
   if (recorder?.state === 'recording') recorder.stop()
   stopTracks()
 })
@@ -179,6 +225,14 @@ onBeforeUnmount(() => {
       </section>
       <article v-else class="answer-card conversation-answer">
         <div class="answer-card-head"><span class="answer-icon">✳</span><h2>{{ tr('답변') }}</h2><span v-if="displayedAnswer.answer_mode === 'general'" class="review-tag">{{ tr('AI 일반 답변') }}</span><span v-else-if="displayedAnswer.needs_review" class="review-tag">{{ tr('담당자 확인 필요') }}</span><span v-else class="verified-tag">✓ {{ tr('근거 확인') }}</span></div>
+        <div class="speech-actions">
+          <button class="speak-button" type="button" :disabled="speechBusy || !displayedAnswer.answer.trim()" :aria-pressed="speechPlaying" @click="toggleSpeech">
+            <span aria-hidden="true">{{ speechPlaying ? '■' : '▶' }}</span>
+            {{ speechBusy ? tr('음성 생성 중…', 'Creating audio…') : speechPlaying ? tr('재생 중지', 'Stop playback') : tr('답변 듣기', 'Listen to answer') }}
+          </button>
+          <span v-if="speechError" class="speech-error" role="alert">{{ tr(speechError) }}</span>
+          <audio ref="audioElement" :src="audioUrl" preload="none" @ended="speechPlaying = false" @pause="speechPlaying = false"></audio>
+        </div>
         <p class="answer-text">{{ displayedAnswer.answer }}</p>
         <div v-if="displayedAnswer.answer_mode === 'general'" class="review-note"><span>i</span>{{ tr('일반 AI 답변이며 검색 근거를 조회하지 않았습니다. 안전 관련 내용은 공식 자료와 담당자 확인이 필요합니다.') }}</div>
         <div v-if="displayedAnswer.needs_review" class="review-note"><span>i</span>{{ tr('제공된 자료에서 충분한 근거를 찾지 못했습니다. 실제 제품별 MSDS와 안전 담당자를 확인하세요.') }}</div>
