@@ -16,13 +16,13 @@ let chunks: BlobPart[] = []
 let disposed = false
 const canAsk = computed(() => question.value.trim().length > 0 && !questionBusy.value && !transcribing.value)
 
-async function ask(autoSpeak = false) {
+async function ask() {
   const result = await submitQuestion()
   if (!result) return false
   await router.push({
-      name: 'answers',
-      query: autoSpeak ? { speak: '1' } : undefined,
-    })
+    name: 'answers',
+    query: { speak: '1' },
+  })
   return true
 }
 
@@ -65,8 +65,7 @@ async function toggleRecording() {
       transcribing.value = true
       try {
         question.value = await transcribeAudio(audio)
-        voiceStatus.value = '질문을 확인했습니다. 답변을 만드는 중…'
-        if (!await ask(true)) voiceStatus.value = ''
+        voiceStatus.value = '음성을 질문으로 입력했습니다. 질문하기 버튼을 눌러 주세요.'
       } catch (error) {
         pageError.value = error instanceof Error ? error.message : '음성을 변환하지 못했습니다.'
         voiceStatus.value = ''
@@ -105,9 +104,9 @@ onBeforeUnmount(() => {
         <div><span class="step-number">01</span><h2 id="query-title">질문 입력</h2></div>
         <span class="private-label"><span class="lock-icon">●</span> 인증된 사용자</span>
       </div>
-      <form class="question-form" @submit.prevent="ask(true)">
+      <form class="question-form" @submit.prevent="ask">
         <label for="question">질문</label>
-        <textarea id="question" v-model="question" rows="4" placeholder="궁금한 내용을 입력하거나 음성으로 질문하세요." @keydown.meta.enter.prevent="ask(true)" @keydown.ctrl.enter.prevent="ask(true)"></textarea>
+        <textarea id="question" v-model="question" rows="4" placeholder="궁금한 내용을 입력하거나 음성으로 질문하세요." @keydown.meta.enter.prevent="ask" @keydown.ctrl.enter.prevent="ask"></textarea>
         <div class="voice-input-row">
           <button
             class="voice-button"
@@ -124,7 +123,7 @@ onBeforeUnmount(() => {
         </div>
         <div class="form-bottom">
           <div class="question-actions">
-            <span class="helper-text">음성 질문은 변환이 끝나면 자동으로 답변을 요청합니다.</span>
+            <span class="helper-text">음성 변환이 끝나면 내용을 확인하고 질문하기를 눌러 주세요.</span>
           </div>
           <button class="button button-primary ask-button" type="submit" :disabled="!canAsk">{{ questionBusy ? '근거를 찾는 중…' : '질문하기' }} <span>↗</span></button>
         </div>
@@ -133,7 +132,7 @@ onBeforeUnmount(() => {
     </section>
 
     <section class="guidance-row">
-      <div class="guidance-card"><span class="guidance-icon">⌕</span><div><strong>말하면 바로 질문</strong><p>녹음한 음성을 텍스트로 바꾸고 AI에 질문합니다.</p></div></div>
+      <div class="guidance-card"><span class="guidance-icon">⌕</span><div><strong>말하면 텍스트 입력</strong><p>녹음한 음성을 질문창에 입력하고 질문 버튼을 활성화합니다.</p></div></div>
       <div class="guidance-card"><span class="guidance-icon inventory-guidance">▶</span><div><strong>답변을 음성으로</strong><p>생성된 답변을 화면에 표시하고 자연스럽게 읽어드립니다.</p></div></div>
     </section>
   </main>
