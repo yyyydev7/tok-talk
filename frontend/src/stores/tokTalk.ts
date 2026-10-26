@@ -22,6 +22,7 @@ export type RagResponse = {
   answer: string
   sources: Source[]
   needs_review: boolean
+  answer_mode?: 'general' | 'rag'
   material: Material | null
   resolution: {
     status: 'resolved' | 'ambiguous' | 'not_found'
@@ -313,7 +314,7 @@ export async function loadInventory(materialId: string): Promise<InventoryRespon
   }
 }
 
-export async function submitQuestion(material?: Material | null): Promise<RagResponse | null> {
+export async function submitQuestion(_material?: Material | null): Promise<RagResponse | null> {
   const text = question.value.trim()
   if (!text) {
     pageError.value = '질문을 입력해 주세요.'
@@ -323,18 +324,11 @@ export async function submitQuestion(material?: Material | null): Promise<RagRes
   clearResult()
   pageError.value = ''
   try {
-    const chosen = material ?? selectedMaterial.value
-    const result = chosen
-      ? await request<RagResponse>(ragBase, '/rag-query', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ material_id: chosen.material_id, question: text, top_k: 5 }),
-        })
-      : await request<RagResponse>(ragBase, '/rag-query/auto', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ question: text, top_k: 5 }),
-        })
+    const result = await request<RagResponse>(ragBase, '/chat-query', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question: text }),
+    })
     answer.value = result
     if (result.material) selectedMaterial.value = result.material
     return result

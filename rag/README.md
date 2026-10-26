@@ -33,6 +33,7 @@ NIOSH 근거는 PDF 파일명·페이지를, KOSHA 근거는 출처 URL을 반�
 | `GET /chemicals?query=` | 이름·동의어 검색어(선택) | 실제 인덱스에 적재된 물질 목록 |
 | `POST /rag-query` | `{material_id, question, top_k?}` | 선택 물질의 답변·출처 |
 | `POST /rag-query/auto` | `{question, top_k?}` | 물질 자동 인식 후 답변 또는 후보 |
+| `POST /chat-query` | `{question}` | 인덱스 없이 일반 LLM 답변 생성 |
 | `POST /speech-to-text` | `multipart/form-data`의 `file` | 녹음 음성을 질문 텍스트로 변환 |
 | `POST /text-to-speech` | `{text}` | 답변을 MP3 음성으로 변환 |
 | `GET /health/live` | 없음 | 프로세스 생존 |
@@ -52,6 +53,9 @@ Vue 요청에는 쿠키를 포함해야 합니다.
 허용하세요. 모델·언어·출력 형식은 `.env.example`의 기본값을 필요에 따라
 바꿀 수 있습니다. 브라우저로 키를 전달하거나 `VITE_*` 변수에 넣지 않습니다.
 음성 업로드는 기본 10 MiB, 읽을 텍스트는 5,000자로 제한됩니다.
+`/chat-query`는 KOSHA 인덱스를 사용하지 않으며 `LLM_API_KEY` 또는
+`OPENAI_API_KEY`가 필요합니다. 프론트의 기본 질문 흐름은 음성 또는 텍스트
+질문을 이 API로 보내고, 받은 답변을 `/text-to-speech`로 읽습니다.
 
 ```js
 const response = await fetch('http://localhost:8001/rag-query/auto', {

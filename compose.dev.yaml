@@ -69,6 +69,7 @@ services:
       DATA_DIR: /data
       RAG_INDEX_PATH: ${RAG_INDEX_PATH:-/data/indexes/current}
       LLM_API_KEY: ${LLM_API_KEY:-${OPENAI_API_KEY:-}}
+      VOICE_CHAT_MODEL: ${VOICE_CHAT_MODEL:-gpt-4o-mini}
       ELEVENLABS_API_KEY: ${ELEVENLABS_API_KEY:-}
       ELEVENLABS_VOICE_ID: ${ELEVENLABS_VOICE_ID:-}
       ELEVENLABS_TTS_MODEL: ${ELEVENLABS_TTS_MODEL:-eleven_multilingual_v2}

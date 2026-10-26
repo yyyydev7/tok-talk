@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { pageError, question, questionBusy, selectedMaterial, submitQuestion, transcribeAudio } from '../stores/tokTalk'
+import { pageError, question, questionBusy, submitQuestion, transcribeAudio } from '../stores/tokTalk'
 
 const router = useRouter()
 const recording = ref(false)
@@ -16,9 +16,14 @@ let chunks: BlobPart[] = []
 let disposed = false
 const canAsk = computed(() => question.value.trim().length > 0 && !questionBusy.value && !transcribing.value)
 
-async function ask() {
+async function ask(autoSpeak = false) {
   const result = await submitQuestion()
-  if (result) await router.push({ name: 'answers' })
+  if (!result) return false
+  await router.push({
+      name: 'answers',
+      query: autoSpeak ? { speak: '1' } : undefined,
+    })
+  return true
 }
 
 function stopTracks() {
@@ -60,7 +65,8 @@ async function toggleRecording() {
       transcribing.value = true
       try {
         question.value = await transcribeAudio(audio)
-        voiceStatus.value = '음성을 질문으로 입력했습니다.'
+        voiceStatus.value = '질문을 확인했습니다. 답변을 만드는 중…'
+        if (!await ask(true)) voiceStatus.value = ''
       } catch (error) {
         pageError.value = error instanceof Error ? error.message : '음성을 변환하지 못했습니다.'
         voiceStatus.value = ''
@@ -88,10 +94,10 @@ onBeforeUnmount(() => {
   <main class="workspace">
     <section class="welcome-row">
       <div>
-        <h1>어떤 시약을 확인할까요?</h1>
-        <p class="welcome-copy">질문에 물질명을 적거나, 물질을 먼저 검색해 선택하세요.</p>
+        <h1>무엇이 궁금하신가요?</h1>
+        <p class="welcome-copy">질문을 입력하거나 마이크로 말하면 답변을 받아 음성으로 읽어드립니다.</p>
       </div>
-      <div class="welcome-badge"><span class="badge-icon">✳</span><span>근거 중심<br /><strong>안전정보 탐색</strong></span></div>
+      <div class="welcome-badge"><span class="badge-icon">✳</span><span>말하고 듣는<br /><strong>AI 음성 대화</strong></span></div>
     </section>
 
     <section class="query-card" aria-labelledby="query-title">
@@ -99,10 +105,9 @@ onBeforeUnmount(() => {
         <div><span class="step-number">01</span><h2 id="query-title">질문 입력</h2></div>
         <span class="private-label"><span class="lock-icon">●</span> 인증된 사용자</span>
       </div>
-      <div v-if="selectedMaterial" class="selected-pill"><span class="tiny-check">✓</span>{{ selectedMaterial.name }}<span>CAS {{ selectedMaterial.cas_number || '정보 없음' }}</span><button type="button" aria-label="선택 해제" @click="selectedMaterial = null">×</button></div>
-      <form class="question-form" @submit.prevent="ask">
-        <label for="question">{{ selectedMaterial ? '선택한 물질에 대해 질문' : '질문' }}</label>
-        <textarea id="question" v-model="question" rows="4" :placeholder="selectedMaterial ? '예: 보호구 권고는 무엇인가요?' : '예: 아세톤의 노출 경로와 주요 증상은 무엇인가요?'" @keydown.meta.enter.prevent="ask" @keydown.ctrl.enter.prevent="ask"></textarea>
+      <form class="question-form" @submit.prevent="ask(true)">
+        <label for="question">질문</label>
+        <textarea id="question" v-model="question" rows="4" placeholder="궁금한 내용을 입력하거나 음성으로 질문하세요." @keydown.meta.enter.prevent="ask(true)" @keydown.ctrl.enter.prevent="ask(true)"></textarea>
         <div class="voice-input-row">
           <button
             class="voice-button"
@@ -119,8 +124,7 @@ onBeforeUnmount(() => {
         </div>
         <div class="form-bottom">
           <div class="question-actions">
-            <RouterLink class="button button-soft material-route-button" :to="{ name: 'materials' }">{{ selectedMaterial ? '물질 바꾸기' : '물질 검색·선택' }} <span>⌕</span></RouterLink>
-            <span class="helper-text">물질명이 여러 개면 답변 전에 선택을 요청합니다.</span>
+            <span class="helper-text">음성 질문은 변환이 끝나면 자동으로 답변을 요청합니다.</span>
           </div>
           <button class="button button-primary ask-button" type="submit" :disabled="!canAsk">{{ questionBusy ? '근거를 찾는 중…' : '질문하기' }} <span>↗</span></button>
         </div>
@@ -129,8 +133,8 @@ onBeforeUnmount(() => {
     </section>
 
     <section class="guidance-row">
-      <div class="guidance-card"><span class="guidance-icon">⌕</span><div><strong>근거가 있는 답변</strong><p>답변과 함께 원문 출처·항목·확인일을 확인합니다.</p></div></div>
-      <div class="guidance-card"><span class="guidance-icon inventory-guidance">▤</span><div><strong>별도 재고 화면</strong><p>시연용 수량과 위치를 안전정보와 구분해 보여줍니다.</p></div></div>
+      <div class="guidance-card"><span class="guidance-icon">⌕</span><div><strong>말하면 바로 질문</strong><p>녹음한 음성을 텍스트로 바꾸고 AI에 질문합니다.</p></div></div>
+      <div class="guidance-card"><span class="guidance-icon inventory-guidance">▶</span><div><strong>답변을 음성으로</strong><p>생성된 답변을 화면에 표시하고 자연스럽게 읽어드립니다.</p></div></div>
     </section>
   </main>
 </template>

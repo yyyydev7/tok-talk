@@ -54,6 +54,10 @@ API 키는 서버 전용이며 `VITE_*` 변수에 넣지 않습니다. Compose�
 KOSHA·NIOSH 인덱스를 생성하고, 이후에는 입력이 바뀌거나 KOSHA 갱신 주기가
 도래한 경우에만 자료를 다시 확인합니다. 내용이 같으면 청킹·임베딩은 재사용합니다.
 
+기본 질문 화면은 KOSHA 인덱스와 별개로 `LLM_API_KEY`를 사용해 일반 답변을
+생성한 뒤 ElevenLabs로 읽습니다. KOSHA 인덱스는 물질 근거 검색 기능에서만
+사용합니다.
+
     python3 infra/scripts/init_env.py
     docker compose --env-file .env -f compose.dev.yaml up --build -d --wait
     python3 infra/tests/e2e/smoke.py

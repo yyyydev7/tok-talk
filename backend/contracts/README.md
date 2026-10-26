@@ -17,6 +17,7 @@ x-implementation-status: planned인 경로는 아직 서버에 없습니다.
 - 재고는 별도 DB 조회이며 items: []를 수량 0으로 해석하지 않습니다.
 - 음성 변환은 FastAPI가 ElevenLabs를 서버 측에서 호출하며 두 경로 모두 JWT 쿠키를 검증합니다.
 - 외부 음성 서비스 오류와 설정값은 클라이언트 응답에 노출하지 않습니다.
+- 기본 음성 대화는 STT → 일반 LLM `/chat-query` → TTS 순서이며 KOSHA 인덱스와 분리됩니다.
 
 - Java와 FastAPI는 HS256 JWT의 `sub`, `iss`, `aud`, `iat`, `exp`, `jti`를 동일하게 검증합니다.
 - JWT는 15분 동안 유효하고 `ACCESS_TOKEN` HttpOnly, SameSite=Strict 쿠키로 전달됩니다.

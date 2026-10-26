@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { answer, pageError, question, questionBusy, selectedMaterial, submitQuestion, synthesizeSpeech } from '../stores/tokTalk'
 import type { Material } from '../stores/tokTalk'
 
 const router = useRouter()
+const route = useRoute()
 const activeMaterial = computed(() => answer.value?.material ?? selectedMaterial.value)
 const audioElement = ref<HTMLAudioElement | null>(null)
 const audioUrl = ref('')
@@ -60,6 +61,7 @@ watch(() => answer.value?.answer, () => {
 
 onMounted(() => {
   if (!answer.value) void router.replace({ name: 'question' })
+  else if (route.query.speak === '1') void toggleSpeech()
 })
 
 onBeforeUnmount(releaseAudio)
@@ -87,7 +89,7 @@ onBeforeUnmount(releaseAudio)
 
     <section v-else class="answer-route-grid">
       <article class="answer-card">
-        <div class="answer-card-head"><span class="answer-icon">✳</span><div><h2>답변</h2></div><span v-if="answer.needs_review" class="review-tag">담당자 확인 필요</span><span v-else class="verified-tag"><span>✓</span> 근거 확인</span></div>
+        <div class="answer-card-head"><span class="answer-icon">✳</span><div><h2>답변</h2></div><span v-if="answer.answer_mode === 'general'" class="review-tag">AI 일반 답변</span><span v-else-if="answer.needs_review" class="review-tag">담당자 확인 필요</span><span v-else class="verified-tag"><span>✓</span> 근거 확인</span></div>
         <div class="speech-actions">
           <button class="speak-button" type="button" :disabled="speechBusy" :aria-pressed="speechPlaying" @click="toggleSpeech">
             <span aria-hidden="true">{{ speechPlaying ? '■' : '▶' }}</span>
@@ -97,7 +99,8 @@ onBeforeUnmount(releaseAudio)
           <audio ref="audioElement" :src="audioUrl" preload="none" @ended="speechPlaying = false" @pause="speechPlaying = false"></audio>
         </div>
         <p class="answer-text">{{ answer.answer }}</p>
-        <div v-if="answer.needs_review" class="review-note"><span>i</span> 제공된 자료에서 충분한 근거를 찾지 못했습니다. 실제 제품별 MSDS와 안전 담당자를 확인하세요.</div>
+        <div v-if="answer.answer_mode === 'general'" class="review-note"><span>i</span> 일반 AI 답변이며 KOSHA 자료를 조회하지 않았습니다. 안전 관련 내용은 제품별 MSDS와 담당자를 확인하세요.</div>
+        <div v-else-if="answer.needs_review" class="review-note"><span>i</span> 제공된 자료에서 충분한 근거를 찾지 못했습니다. 실제 제품별 MSDS와 안전 담당자를 확인하세요.</div>
         <div v-if="answer.sources.length" class="source-list">
           <h3><span class="source-count">{{ answer.sources.length }}</span> 참고 근거</h3>
           <article v-for="(source, index) in answer.sources" :key="`${source.title}-${source.section}-${index}`" class="source-item">
@@ -106,7 +109,7 @@ onBeforeUnmount(releaseAudio)
             <a v-if="source.url" class="source-link" :href="source.url" target="_blank" rel="noreferrer" :aria-label="`${source.title} 원문 열기`">↗</a>
           </article>
         </div>
-        <p v-else class="source-empty">표시할 근거 자료가 없습니다.</p>
+        <p v-else-if="answer.answer_mode !== 'general'" class="source-empty">표시할 근거 자료가 없습니다.</p>
       </article>
       <aside class="answer-side-card">
         <span class="step-number">02</span><h2>다음으로</h2>

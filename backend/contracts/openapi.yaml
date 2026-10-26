@@ -252,6 +252,42 @@ paths:
           description: 외부 음성 서비스 처리 실패
         '503':
           $ref: '#/components/responses/Unavailable'
+  /chat-query:
+    post:
+      operationId: queryGeneralAssistant
+      x-implementation-status: implemented
+      summary: 별도 검색 인덱스 없이 일반 LLM에 질문
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [question]
+              properties:
+                question:
+                  type: string
+                  minLength: 1
+                  maxLength: 4000
+      responses:
+        '200':
+          description: 음성 재생에 사용할 일반 AI 답변
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Answer'
+                  - type: object
+                    properties:
+                      answer_mode:
+                        type: string
+                        const: general
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/InvalidRequest'
+        '503':
+          $ref: '#/components/responses/Unavailable'
   /text-to-speech:
     post:
       operationId: synthesizeSpeech
