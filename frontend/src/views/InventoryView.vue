@@ -21,7 +21,6 @@ watch(materialId, (id) => { if (id) void loadInventory(id) }, { immediate: true 
     <div class="route-heading">
       <div>
         <RouterLink class="back-link" :to="answer ? { name: 'answers' } : { name: 'question' }">← {{ answer ? '질문 결과로 돌아가기' : '질문 화면으로 돌아가기' }}</RouterLink>
-        <p class="eyebrow">LAB INVENTORY · DEMO DATA</p>
         <h1>시연용 재고</h1>
         <p class="welcome-copy">{{ materialName }}<template v-if="casNumber"> · CAS {{ casNumber }}</template></p>
       </div>
@@ -29,7 +28,7 @@ watch(materialId, (id) => { if (id) void loadInventory(id) }, { immediate: true 
     </div>
 
     <section class="inventory-page-card">
-      <div class="inventory-head"><div class="inventory-icon">▤</div><div><span class="card-kicker">DEMO INVENTORY</span><h2>{{ materialName }} 재고</h2></div><span v-if="inventory?.is_demo" class="demo-tag">DEMO</span></div>
+      <div class="inventory-head"><div class="inventory-icon">▤</div><div><h2>{{ materialName }} 재고</h2></div><span v-if="inventory?.is_demo" class="demo-tag">시연용</span></div>
       <p class="inventory-caption">안전정보 답변과 별도로 재고 저장소에서 조회한 가상 데이터입니다.</p>
       <div v-if="inventoryBusy" class="inventory-state route-inventory-state"><span class="spinner" aria-hidden="true"></span><p>재고를 조회하고 있습니다</p></div>
       <div v-else-if="inventoryError" class="inventory-state inventory-error route-inventory-state"><span>!</span><div><strong>재고를 불러오지 못했어요</strong><p>{{ inventoryError }}</p><button class="button button-soft retry-button" type="button" @click="loadInventory(materialId)">다시 조회</button></div></div>

@@ -16,7 +16,6 @@ async function ask() {
   <main class="workspace">
     <section class="welcome-row">
       <div>
-        <p class="eyebrow">NIOSH REFERENCE · DEMO INVENTORY</p>
         <h1>어떤 시약을 확인할까요?</h1>
         <p class="welcome-copy">질문에 물질명을 적거나, 물질을 먼저 검색해 선택하세요.</p>
       </div>
