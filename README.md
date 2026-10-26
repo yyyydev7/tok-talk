@@ -48,7 +48,9 @@
 Docker Desktop의 Linux 컨테이너 환경, Docker Compose, Python 3가 필요합니다.
 명령은 이 README가 있는 tok-talk 디렉터리에서 실행합니다.
 
-첫 실행 시 `.env`에 `KOSHA_API_KEY`를 설정하세요. Compose의 `indexer`가
+첫 실행 시 `.env`에 `KOSHA_API_KEY`를 설정하세요. 음성 질문과 답변 재생을
+사용하려면 `ELEVENLABS_API_KEY`와 `ELEVENLABS_VOICE_ID`도 설정합니다.
+API 키는 서버 전용이며 `VITE_*` 변수에 넣지 않습니다. Compose의 `indexer`가
 KOSHA·NIOSH 인덱스를 생성하고, 이후에는 입력이 바뀌거나 KOSHA 갱신 주기가
 도래한 경우에만 자료를 다시 확인합니다. 내용이 같으면 청킹·임베딩은 재사용합니다.
 

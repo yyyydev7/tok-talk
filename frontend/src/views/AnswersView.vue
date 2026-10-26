@@ -1,11 +1,16 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { answer, pageError, question, questionBusy, selectedMaterial, submitQuestion } from '../stores/tokTalk'
+import { answer, pageError, question, questionBusy, selectedMaterial, submitQuestion, synthesizeSpeech } from '../stores/tokTalk'
 import type { Material } from '../stores/tokTalk'
 
 const router = useRouter()
 const activeMaterial = computed(() => answer.value?.material ?? selectedMaterial.value)
+const audioElement = ref<HTMLAudioElement | null>(null)
+const audioUrl = ref('')
+const speechBusy = ref(false)
+const speechPlaying = ref(false)
+const speechError = ref('')
 
 function formatDate(value?: string) {
   if (!value) return '확인일 정보 없음'
@@ -18,9 +23,46 @@ async function askForCandidate(candidate: Material) {
   await submitQuestion(candidate)
 }
 
+function releaseAudio() {
+  audioElement.value?.pause()
+  if (audioUrl.value) URL.revokeObjectURL(audioUrl.value)
+  audioUrl.value = ''
+  speechPlaying.value = false
+}
+
+async function toggleSpeech() {
+  if (speechPlaying.value) {
+    audioElement.value?.pause()
+    speechPlaying.value = false
+    return
+  }
+  speechError.value = ''
+  speechBusy.value = true
+  try {
+    if (!audioUrl.value) {
+      const audio = await synthesizeSpeech(answer.value?.answer ?? '')
+      audioUrl.value = URL.createObjectURL(audio)
+      await nextTick()
+    }
+    await audioElement.value?.play()
+    speechPlaying.value = true
+  } catch (error) {
+    speechError.value = error instanceof Error ? error.message : '답변 음성을 재생하지 못했습니다.'
+  } finally {
+    speechBusy.value = false
+  }
+}
+
+watch(() => answer.value?.answer, () => {
+  releaseAudio()
+  speechError.value = ''
+})
+
 onMounted(() => {
   if (!answer.value) void router.replace({ name: 'question' })
 })
+
+onBeforeUnmount(releaseAudio)
 </script>
 
 <template>
@@ -46,6 +88,14 @@ onMounted(() => {
     <section v-else class="answer-route-grid">
       <article class="answer-card">
         <div class="answer-card-head"><span class="answer-icon">✳</span><div><h2>답변</h2></div><span v-if="answer.needs_review" class="review-tag">담당자 확인 필요</span><span v-else class="verified-tag"><span>✓</span> 근거 확인</span></div>
+        <div class="speech-actions">
+          <button class="speak-button" type="button" :disabled="speechBusy" :aria-pressed="speechPlaying" @click="toggleSpeech">
+            <span aria-hidden="true">{{ speechPlaying ? '■' : '▶' }}</span>
+            {{ speechBusy ? '음성 생성 중…' : speechPlaying ? '재생 중지' : '답변 듣기' }}
+          </button>
+          <span v-if="speechError" class="speech-error" role="alert">{{ speechError }}</span>
+          <audio ref="audioElement" :src="audioUrl" preload="none" @ended="speechPlaying = false" @pause="speechPlaying = false"></audio>
+        </div>
         <p class="answer-text">{{ answer.answer }}</p>
         <div v-if="answer.needs_review" class="review-note"><span>i</span> 제공된 자료에서 충분한 근거를 찾지 못했습니다. 실제 제품별 MSDS와 안전 담당자를 확인하세요.</div>
         <div v-if="answer.sources.length" class="source-list">

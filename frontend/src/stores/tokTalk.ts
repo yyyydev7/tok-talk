@@ -110,7 +110,7 @@ if (typeof window !== 'undefined') {
   }, { deep: true })
 }
 
-async function request<T>(base: string, path: string, init: RequestInit = {}): Promise<T> {
+async function requestResponse(base: string, path: string, init: RequestInit = {}): Promise<Response> {
   let response: Response
   try {
     response = await fetch(`${base}${path}`, { ...init, credentials: 'include' })
@@ -131,7 +131,11 @@ async function request<T>(base: string, path: string, init: RequestInit = {}): P
     throw new Error(message)
   }
   if (!response.ok) {
-    const message = response.status === 422
+    const message = response.status === 413
+      ? '음성 녹음이 너무 깁니다. 짧게 나누어 다시 시도해 주세요.'
+      : response.status === 415
+        ? '지원하지 않는 음성 형식입니다. 다른 브라우저에서 다시 시도해 주세요.'
+        : response.status === 422
       ? '입력 내용을 확인해 주세요.'
       : response.status === 503
         ? '서비스가 준비되지 않았거나 일시적으로 사용할 수 없습니다. 잠시 후 다시 시도해 주세요.'
@@ -140,8 +144,41 @@ async function request<T>(base: string, path: string, init: RequestInit = {}): P
           : `요청을 처리하지 못했습니다. (${response.status})`
     throw new Error(message)
   }
+  return response
+}
+
+async function request<T>(base: string, path: string, init: RequestInit = {}): Promise<T> {
+  const response = await requestResponse(base, path, init)
   if (response.status === 204) return undefined as T
   return response.json() as Promise<T>
+}
+
+export async function transcribeAudio(audio: Blob): Promise<string> {
+  const extension = audio.type.includes('ogg') ? 'ogg'
+    : audio.type.includes('mp4') ? 'm4a'
+      : audio.type.includes('mpeg') ? 'mp3'
+        : 'webm'
+  const form = new FormData()
+  form.append('file', audio, `question.${extension}`)
+  const response = await requestResponse(ragBase, '/speech-to-text', {
+    method: 'POST',
+    body: form,
+  })
+  const result = await response.json() as { text?: string }
+  const text = result.text?.trim()
+  if (!text) throw new Error('음성을 텍스트로 변환하지 못했습니다. 다시 녹음해 주세요.')
+  return text
+}
+
+export async function synthesizeSpeech(text: string): Promise<Blob> {
+  const response = await requestResponse(ragBase, '/text-to-speech', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text }),
+  })
+  const audio = await response.blob()
+  if (!audio.size) throw new Error('생성된 음성을 재생할 수 없습니다.')
+  return audio
 }
 
 export async function checkAuth(force = false): Promise<boolean> {
