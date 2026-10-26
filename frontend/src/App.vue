@@ -39,7 +39,6 @@ async function signOut() {
         <RouterLink v-if="route.name === 'answers' || route.name === 'inventory'" :to="{ name: 'answers' }" exact-active-class="active">답변·출처</RouterLink>
       </nav>
       <div class="topbar-right">
-        <span class="service-label"><span class="live-dot"></span> 시약 안전정보 탐색</span>
         <template v-if="authState === 'signed-in'">
           <span class="user-chip"><span class="avatar">{{ username.slice(0, 1) || '연' }}</span>{{ username || '로그인 사용자' }}</span>
           <button class="text-button" type="button" @click="signOut">로그아웃</button>
@@ -49,6 +48,38 @@ async function signOut() {
 
     <RouterView />
 
-    <footer class="footer"><span>톡,talk <span class="footer-separator">·</span> 근거를 확인하는 안전정보</span><span>NIOSH 일반 참고정보 <span class="footer-separator">·</span> 제품별 MSDS 대체 불가</span></footer>
+    <footer class="site-footer">
+      <div class="footer-main">
+        <div class="footer-brand-block">
+          <RouterLink class="footer-brand" :to="{ name: 'question' }" aria-label="톡,talk 홈">
+            <img src="/media/tok-talk-brand-mark.png?v=3" alt="" />
+            <span>톡,talk</span>
+          </RouterLink>
+          <p>근거를 확인하는 안전정보</p>
+        </div>
+
+        <nav class="footer-column" aria-label="서비스 바로가기">
+          <h2>서비스</h2>
+          <RouterLink :to="{ name: 'question' }">질문하기</RouterLink>
+          <RouterLink :to="{ name: 'materials' }">물질 검색</RouterLink>
+          <RouterLink :to="{ name: 'materials' }">시연용 재고</RouterLink>
+        </nav>
+
+        <nav id="footer-sources" class="footer-column" aria-label="참고 자료">
+          <h2>참고 자료</h2>
+          <a href="https://msds.kosha.or.kr/MSDSInfo/kcic/msdssearchMsds.do" target="_blank" rel="noopener noreferrer">KOSHA MSDS <span aria-hidden="true">↗</span></a>
+          <a href="https://www.cdc.gov/niosh/npg/" target="_blank" rel="noopener noreferrer">NIOSH Pocket Guide <span aria-hidden="true">↗</span></a>
+          <a href="#footer-sources">출처·자료 기준</a>
+        </nav>
+
+        <div class="footer-column footer-guidance">
+          <h2>이용 안내</h2>
+          <RouterLink :to="{ name: 'question' }">서비스 소개</RouterLink>
+          <a href="#footer-sources">데이터 출처</a>
+          <a href="https://github.com/yyyydev7/tok-talk/issues" target="_blank" rel="noopener noreferrer">문의 <span aria-hidden="true">↗</span></a>
+        </div>
+      </div>
+      <div class="footer-bottom"><span>© 2026 톡,talk Mini Project</span></div>
+    </footer>
   </div>
 </template>

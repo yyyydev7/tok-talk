@@ -26,7 +26,6 @@ onMounted(() => {
     <div class="route-heading">
       <div>
         <RouterLink class="back-link" :to="{ name: 'question' }">← 질문으로 돌아가기</RouterLink>
-        <p class="eyebrow">MATERIAL CATALOG</p>
         <h1>물질 검색·선택</h1>
         <p class="welcome-copy">이름이나 동의어로 자료가 등록된 물질을 찾아 질문에 지정합니다.</p>
       </div>
