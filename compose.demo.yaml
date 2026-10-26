@@ -34,6 +34,7 @@ services:
       DB_NAME: ${DB_NAME:-tok_talk}
       DB_USER: ${DB_USER:-toktalk}
       DB_PASSWORD: ${DB_PASSWORD:?Provide demo DB_PASSWORD}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8088}
 
   indexer:
     build:

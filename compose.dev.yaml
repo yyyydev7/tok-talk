@@ -23,6 +23,9 @@ services:
     build:
       context: ./backend
       target: development
+    depends_on:
+      db:
+        condition: service_healthy
     environment:
       PORT: "8080"
       JWT_SECRET: ${JWT_SECRET:?Run infra/scripts/init_env.py first}

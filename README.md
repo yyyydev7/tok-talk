@@ -60,9 +60,11 @@ KOSHA·NIOSH 인덱스를 생성하고, 이후에는 입력이 바뀌거나 KOSH
 화면은 http://localhost:5174, Java는 8080, FastAPI는 8001, DB 호스트 포트는 13306입니다.
 포트를 바꾸면 .env의 관련 주소와 CORS_ORIGINS도 함께 변경하세요.
 
-/health/live는 프로세스 생존을 200으로 응답합니다.
-/health는 재고 조회 미구현 상태를 반영해 503을 응답하지만,
-`index_ready`로 RAG 인덱스 상태를 확인할 수 있습니다.
+각 서버의 /health/live는 프로세스 생존을 200으로 응답합니다.
+Java /health는 인증 준비 시 200, FastAPI /health는 재고 조회 미구현 상태를 반영해
+503을 응답합니다. FastAPI의 `index_ready`로 RAG 인덱스 상태를 확인할 수 있습니다.
+기본 인덱스 경로는 호스트의 `datapipeline/data/indexes/current`,
+RAG 컨테이너의 `/data/indexes/current`입니다.
 
     docker compose --env-file .env -f compose.dev.yaml down
 
@@ -77,8 +79,16 @@ KOSHA·NIOSH 인덱스를 생성하고, 이후에는 입력이 바뀌거나 KOSH
     python3 infra/tests/e2e/proxy_smoke.py
 
 데모는 로컬 http://localhost:8088에만 노출합니다.
+기본 프로젝트 이름이 개발 구성과 달라 DB 볼륨과 가입 계정도 분리됩니다.
 공개 HTTPS 배포는 아직 구성하지 않았습니다.
 자세한 내용은 [실행·배포 안내](infra/README.md)를 확인하세요.
+
+두 검사는 실제 가입·중복 가입 거절·잘못된 비밀번호 거절·로그인·JWT 쿠키·로그아웃과
+보호된 RAG 경로를 확인합니다. 인덱스 상태에 따라 인증된 물질 목록 200 또는
+인덱스 사용 불가 503을 확인하고, 미구현 재고 API는 404를 예상합니다.
+검사마다 임의 계정 하나가 DB에 남으며, 쿠키는 메모리에만 보관하고 토큰·비밀번호는 출력하지 않습니다.
+실제 LLM 답변은 생성하지 않으므로 화면에서 질문 후 답변·출처 표시를 별도로 확인하세요.
+상세 범위와 포트 변경 방법은 [검사 안내](infra/tests/e2e/README.md)에 있습니다.
 
 - frontend: npm ci, npm run build
 - backend: ./gradlew --no-daemon build

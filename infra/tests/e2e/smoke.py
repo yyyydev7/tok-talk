@@ -1,18 +1,10 @@
 #!/usr/bin/env python3
-"""Smoke checks for the scaffold, not a completed product acceptance suite."""
+"""Check development services and the implemented authentication/RAG connection."""
 
 import argparse
 import json
-from urllib.error import HTTPError, URLError
-from urllib.request import urlopen
 
-
-def request(url: str) -> tuple[int, str]:
-    try:
-        with urlopen(url, timeout=10) as response:
-            return response.status, response.read().decode("utf-8")
-    except HTTPError as error:
-        return error.code, error.read().decode("utf-8")
+from auth_checks import HttpClient, check_authentication, expect_status, origin_of
 
 
 def main() -> None:
@@ -22,29 +14,35 @@ def main() -> None:
     parser.add_argument("--rag", default="http://localhost:8001")
     args = parser.parse_args()
 
-    status, body = request(args.frontend)
+    status, body, _ = HttpClient(args.frontend).request("/")
     assert status == 200 and '<div id="app">' in body, "Vue entry page unavailable"
+    print("PASS frontend: Vue entry page available")
     for name, base in (("backend", args.backend), ("rag", args.rag)):
-        status, body = request(f"{base}/health/live")
-        assert status == 200, f"{name} liveness failed: {status}"
-        assert isinstance(json.loads(body), dict), f"{name} health is not JSON"
-        status, body = request(f"{base}/health")
-        assert status == 503, f"{name} must report unimplemented readiness as 503"
+        client = HttpClient(base)
+        status, body, _ = client.request("/health/live")
+        expect_status(status, 200, f"{name} liveness")
+        assert json.loads(body).get("status") == "alive", f"{name} is not alive"
+        status, body, _ = client.request("/health")
+        expect_status(status, 200 if name == "backend" else 503, f"{name} readiness")
         payload = json.loads(body)
         if name == "backend":
-            assert payload.get("auth_ready") is False, "Auth readiness must remain false"
+            assert payload.get("auth_ready") is True, "Authentication must be ready"
         else:
-            assert payload.get("index_ready") is False, "Index readiness must remain false"
-            assert payload.get("inventory_db_ready") is False, "DB readiness must remain false"
-        status, _ = request(f"{base}/not-a-route")
-        assert status == 404, f"{name} must reject unknown routes"
-        print(f"PASS {name}: alive, honest readiness, unknown route rejected")
-    print("PASS frontend: Vue entry page available")
-    print("Scaffold checks passed. Authentication, RAG and inventory are not implemented.")
+            index_ready = payload.get("index_ready")
+            assert isinstance(index_ready, bool), "Index readiness must be a boolean"
+            assert payload.get("inventory_db_ready") is False, "Inventory DB is not implemented"
+            print(f"PASS rag readiness: index_ready={index_ready}, inventory_db_ready=False")
+        status, _, _ = client.request("/not-a-route")
+        expect_status(status, 404, f"{name} unknown route")
+        print(f"PASS {name}: liveness, readiness, unknown route")
+    check_authentication(args.backend, origin_of(args.frontend),
+                         rag_base=args.rag, index_ready=index_ready)
+    print("Development checks passed. LLM answers are not exercised; inventory is not implemented.")
+    print("One generated smoke account remains in this stack's database.")
 
 
 if __name__ == "__main__":
     try:
         main()
-    except (AssertionError, URLError, ValueError) as error:
+    except (AssertionError, OSError, ValueError) as error:
         raise SystemExit(f"FAIL: {error}") from error

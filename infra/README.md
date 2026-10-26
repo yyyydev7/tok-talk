@@ -11,16 +11,18 @@
 
 ## 현재 제공 범위
 
-- 개발 구성: frontend, backend, rag, db
+- 개발 구성: frontend, backend, rag, db와 인덱스를 준비하는 indexer
 - 데모 구성: 위 서비스의 release 이미지와 같은 출처의 HTTP 프록시
-- DB는 빈 tok_talk 데이터베이스와 로컬 개발용 일반 계정만 생성
-- 마이그레이션·재고 시드·테이블별 권한 분리는 담당자가 구현할 위치와 규칙만 제공
-- Java와 FastAPI의 DB 설정은 전달되지만 아직 연결하지 않음
+- Java 인증 서버는 MariaDB에 가입 계정을 저장하고 JWT 쿠키를 발급
+- FastAPI는 같은 JWT 설정으로 인증하며 FAISS 물질 목록·질문 API를 제공
+- 재고 조회·재고 시드·테이블별 권한 분리는 미구현
 - Compose의 프로세스 검사는 /health/live 사용; 업무 준비 상태는 /health로 별도 확인
 
 DB와 인덱스 준비 상태를 서버 생존과 묶지 않았습니다.
 향후 재고 DB 장애가 RAG 컨테이너 재시작이나 전체 접근 차단으로 이어지지 않도록 유지하세요.
 DB를 사용하는 초기화 작업에는 db의 service_healthy 의존성을 추가합니다.
+indexer가 성공한 뒤 RAG가 시작되며, 호스트의 `datapipeline/data/indexes/current`를
+RAG 컨테이너의 `/data/indexes/current`로 읽습니다. `RAG_INDEX_PATH`로 변경할 수 있습니다.
 
 ## 포트
 
@@ -39,11 +41,27 @@ DB를 사용하는 초기화 작업에는 db의 service_healthy 의존성을 추
 접속: http://localhost:8088 (DEMO_HTTP_PORT로 변경 가능).
 브라우저의 /api/*는 Java, /rag-query 및 /chemicals, /inventory, /health는 FastAPI로 전달됩니다.
 루트 /는 빌드된 Vue 화면을 제공합니다. VITE_*는 빌드 시 고정되는 공개 설정입니다.
+기본 프로젝트 이름이 개발 구성과 달라 DB 볼륨과 가입 계정도 분리됩니다.
+
+## 기동·인증 검증
+
+각 구성 실행 후 다음 검사를 사용합니다.
+
+    python3 infra/tests/e2e/smoke.py
+    python3 infra/tests/e2e/proxy_smoke.py
+
+첫 명령은 개발 구성, 두 번째 명령은 데모 구성을 검사합니다. 화면과 프로세스 생존에 더해
+실제 가입·중복 거절·잘못된 비밀번호 거절·로그인·JWT 쿠키·로그아웃과 보호된 RAG 경로를 확인합니다.
+RAG `/health`의 503은 재고 DB 미구현을 반영합니다. `index_ready`에 따라 인증된 물질 목록의
+200 또는 인덱스 사용 불가 503을 확인하며, 재고 API는 아직 404를 예상합니다.
+
+검사마다 임의 가입 계정 하나가 DB에 남습니다. 쿠키는 메모리에만 보관하고 토큰·비밀번호는
+출력하지 않습니다. 실제 LLM 답변 생성은 별도 화면 검증이 필요합니다.
+자세한 범위와 포트 변경 인자는 [검사 안내](tests/e2e/README.md)를 참고하세요.
 
 이 파일은 공개 HTTPS 배포를 완료한 구성이 아닙니다.
 공개 전에는 TLS 종료, 실제 도메인, 쿠키 Secure/SameSite/Path, CSRF,
 요청 제한, 테이블별 DB 계정과 이미지 digest를 확정하고 구현해야 합니다.
-기능 API도 아직 구현하지 않았으므로 공개 서비스로 안내하지 마세요.
 
 ## DB 데이터 유지
 
